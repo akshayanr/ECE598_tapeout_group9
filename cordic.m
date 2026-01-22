@@ -29,13 +29,35 @@ function [X_out, Y_out] = ...
              256;  % i=16: atan(2^-16)
     ]);
 
-
     % Cast 16 bit (8,8) inputs to 32-bit integers to prevent overflow during calc
     % This would result in Q8.24.
     
     X = bitshift(int32(X_in), 16);
     Y = bitshift(int32(Y_in), 16);
     Z = bitshift(int32(Z_in), 16);
+
+
+    %need to complete prerotation of our input.
+    % In Q8.24, 90 degrees (pi/2) is roughly 26353589
+    HALF_PI = int32(26353589); 
+    
+    if Z > HALF_PI
+        % Angle is too positive (e.g., 135 deg)
+        % Rotate vector by +180 deg (Flip signs)
+        X = -X;
+        Y = -Y;
+        % Subtract 180 deg (pi) from Z to bring it into range
+        % PI in Q8.24 is approx 52707179
+        Z = Z - int32(52707179);
+        
+    elseif Z < -HALF_PI
+        % Angle is too negative (e.g., -135 deg)
+        % Rotate vector by -180 deg (Flip signs)
+        X = -X;
+        Y = -Y;
+        % Add 180 deg (pi) to Z to bring it into range
+        Z = Z + int32(52707179);
+    end
    
 
     %the rotations.
