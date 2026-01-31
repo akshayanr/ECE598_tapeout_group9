@@ -1,6 +1,11 @@
 import numpy as np
 from numpy.fft import fft
 
+#NOTE: SRAM IS ACURATELY MODELED AS A 2D LIST WHERE EACH ROW IS AN ADDRESS LINE, but write and read is simplified
+#doesn't coinsider activation. 
+
+#TODO: NEED TO FIGURE OUT WHEN WE READ DO WE READ THE WHOLE LINE, so the read signal triggers the entire line.
+
 class Reconfigurable_FFT:
     def __init__(self, point_size, butterfly_count, mult_pipeline_stages):
 
@@ -18,10 +23,34 @@ class Reconfigurable_FFT:
         # Twiddle ROM
         self.twiddle_rom = self.generate_twiddle_factors()
 
-        # Initialize SRAMs (Using complex numbers for simulation simplicity)
-        self.sram_a = [0+0j for _ in range(point_size // 2)]
-        self.sram_b = [0+0j for _ in range(point_size // 2)]
 
+        #the depth of the sram memory banks.
+        self.memory_depth = 1024  // butterfly_count
+
+        # Initialize SRAMs (Using complex numbers for simulation simplicity
+        #the sram is going to be a ping pong mechanism because we could be sending data in while we operate.
+        #we could have an option to read from sram while we do sram processing of another set of 1024 points.
+        self.sram_a = [[0+0j]*butterfly_count for _ in range(self.memory_depth)]
+        self.sram_b = [[0+0j]*butterfly_count for _ in range(self.memory_depth)]
+
+      
+        self.operating_sram = 'a'
+
+        self.done = False
+
+
+    #can read if the fft is done operating through all stages.
+    def get_done(self):
+        return self.done
+    
+    #can tell which sram is the most recently operated on.
+    def get_operating_sram(self):
+        return self.operating_sram
+    
+    #need to remember to call this after loading the data into the sram. 
+    def set_operating_sram(self, sram_bank):
+        self.operating_sram = sram_bank
+        
     #function to generate twiddle factors
     def generate_twiddle_factors(self):
         twiddles = []
@@ -31,43 +60,77 @@ class Reconfigurable_FFT:
         return twiddles
 
     #function to load data into the sram banks
-    def load_data(self, input_arr):
-        half = self.point_size // 2
-        self.sram_a = list(input_arr[0:half])
-        self.sram_b = list(input_arr[half:])
-        
-        # Reset cycles on new load
-        self.total_cycles = 0
+    #it's one the user to select which sram to load into.
+    #the user has to check done and which sram is being operated on.
+    #we can input 32 bits complex number so it is one entry per index.
+    def load_data(self, input_arr, sram_bank, input_address):
+        #the address provided will be an index.
 
+        #Width is butterfly count
+        WIDTH = self.butterfly_count
+
+
+        row = input_index // WIDTH   
+        col = input_index % WIDTH
+
+        #NEED TO KEEP IN MIND THAT READ ADDRESS TRANSLATION WILL HAVE TO BE DONE IN THE ADDRESS DECODER
+        #AND WE NEED TO WORRY ABOUT ACTIVATING THE ENTIRE LINE.
+        if sram_bank == 'a':
+            self.sram_a[row][col] = input_arr
+        else:
+            self.sram_b[row][col] = input_arr
+
+    #similar to loading the data, the user's will be responsible for reading from the correct sram bank.
+    def read_data(self, sram_bank, input_address):
+        #read from the sram bank that has the finished data and not operating.
+        #need to figure this out.
+
+        #Width is butterfly count
+        WIDTH = self.butterfly_count
+
+
+        row = input_index // WIDTH   
+        col = input_index % WIDTH
+        
+        if sram_bank == 'a':
+            return self.sram_a[row][col]
+        else:
+            return self.sram_b[row][col]
+        
     #butterfly unit
     def butterfly_unit(self, val_a, val_b, twiddle):
         top_out = val_a + val_b
         bot_out = (val_a - val_b) * twiddle
+
+        #TODO : Need to get back to this.
+        # for _ in range(self.mult_pipeline_stages):
+        #     self.total_cycles += 1  # Simulate pipeline delay
+        #     print(f"    [Pipeline] Processing... (Cycle {self.total_cycles})")
         return top_out, bot_out
 
     def calculate_fft(self):
         num_stages = int(np.log2(self.point_size))
         
-        print(f"--- STARTING FFT (N={self.point_size}) ---")
-        print(f"Config: {self.butterfly_count} Parallel Units | Pipeline Depth: {self.mult_pipeline_stages}")
+        # print(f"--- STARTING FFT (N={self.point_size}) ---")
+        # print(f"Config: {self.butterfly_count} Parallel Units | Pipeline Depth: {self.mult_pipeline_stages}")
         
         #the number of ops per fft.
         total_ops = self.point_size // 2
 
         for stage in range(num_stages):
-            print(f"\n[Stage {stage}] Processing...")
-            
-            # Prepare buffers for next stage
-            next_sram_a = [0j] * len(self.sram_a)
-            next_sram_b = [0j] * len(self.sram_b)
-            
+            # print(f"\n[Stage {stage}] Processing...")
+             
             # We process data in chunks of 'butterfly_count
             for idx in range(0, total_ops, self.butterfly_count):
                 
                 #loading the data from the two srams take 1 cycle.
                 self.total_cycles += 1
                 
-                chunk_a = self.sram_a[idx : idx + self.butterfly_count]
+                #need to understand which line to read from.
+                #first set of data for the butterflies.
+                input_a = self.sram_a[idx : idx + self.butterfly_count]
+
+                #need to do somemath to figure out which sram to 
                 chunk_b = self.sram_b[idx : idx + self.butterfly_count]
 
                 #our results.
