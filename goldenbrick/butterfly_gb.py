@@ -25,8 +25,8 @@ def calc_butterfly (inputs):
     return outputs
 
 def main(options):
+    
     # Generate random inputs 
-
     arr_dim = (options.num_inputs, 4)
     rng = np.random.default_rng(options.seed)
     test_inputs =  rng.uniform(options.lower, options.upper, arr_dim).astype(np.float16)
