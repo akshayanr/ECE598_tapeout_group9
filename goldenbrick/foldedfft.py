@@ -58,6 +58,10 @@ class Reconfigurable_FFT:
             W = np.exp(-2j * np.pi * k / self.point_size)
             twiddles.append(W)
         return twiddles
+    
+    #gets the twiddle factor needed.
+    def get_twiddle_factor(self, k):
+        return self.twiddle_rom[k]
 
     #function to load data into the sram banks
     #it's one the user to select which sram to load into.
@@ -121,38 +125,150 @@ class Reconfigurable_FFT:
         total_num_butterflies = self.point_size // 2
 
 
-        #need to get operating sram
-        current_sram = self.get_operating_sram()
-
+        #current_sram is the sram we read from.
+        if(self.operating_sram == 'a'):
+            current_sram = self.sram_a
+            write_sram = self.sram_b
+        else:
+            current_sram = self.sram_b
+            write_sram = self.sram_a
+       
         for stage in range(num_stages):
             #so this idx is accurate of the cycles -> each idx would ideally be a cycle.
             #this is the number of butterflies per stage.
 
             #every cycle we will always do butterfly_count amount of calculations.
-            for idx in range(0, total_num_butterflies, self.butterfly_count):
-                #inter-row butterfly processing
-                if stride >= self.butterfly_count:
+            #set idx and use a while loop to accomodate the intra-row case.
+
+            #inter-row case:
+            if stride >= self.butterfly_count:
+                for idx in range(0, total_num_butterflies, self.butterfly_count):
                     #the row that we want.
                     row = idx // self.butterfly_count
 
                     input_top = current_sram[row]
                     input_bot = current_sram[row + stride]
 
-                    #next need to feed into the butterfly units.
-                #intra-row butterfly processing.
-                else:
+                    output_top = [0j] * self.butterfly_count
+                    output_bot = [0j] * self.butterfly_count
+        
+                    #iterate through each index embedded in sram word
+                    for col_idx in range(self.butterfly_count):
+                        
+                        #grab the inputs from the rows
+                        val_a = input_top[col_idx]
+                        val_b = input_bot[col_idx]
+
+                        # calculate absolute index of the top value in the FFT, like any number from index 0 to 1024.
+                        abs_index = (row * self.butterfly_count) + col_idx 
+
+                        #this tells us which group of weights
+                        position_in_group = abs_index % stride
+
+                        #twiddle stride because the number of indexed decreases each stage.
+                        twiddle_stride = self.point_size // (2 * stride)
+
+                        #twiddle index
+                        k = position_in_group * twiddle_stride
+                        
+                        twiddle = self.get_twiddle_factor(k)
+
+                        #run the butterfly
+                        out_a, out_b = self.butterfly_unit(val_a, val_b, twiddle)
+                        
+                        #Store into output buffers
+                        output_top[col_idx] = out_a
+                        output_bot[col_idx] = out_b
+
+                    #write the finished rows to the Destination SRAM
+                    #want to write after the entire row is processed
+                    write_sram[row] = output_top
+                    write_sram[row + stride] = output_bot
+
+            #intra-row case:
+            else:
+                row = 0
+                active_depth = self.point_size // self.butterfly_count
+                while row < active_depth:
+                    first_row = current_sram[row]
+                    second_row = current_sram[row + 1]
+
+                    #create a data_pool of both rows
+                    data_pool = first_row + second_row
+
+                    #outputs
+                    output_first_row = [0j] * self.butterfly_count
+                    output_second_row = [0j] * self.butterfly_count
+
+                    for k in range(self.butterfly_count):
+
+                        #which group the element belongs to.
+                        group_id = k // stride
+                    
+                        #local offset within that group
+                        local_offset = k % stride
+
+                        #calculate index in combined data pool
+                        #each group consumes (2 * stride) amount of data.
+                        base_idx = (group_id * 2 * stride) + local_offset
+
+                        #top is at base, Bottom is always 'stride' away from Top
+                        val_a = data_pool[base_idx]
+                        val_b = data_pool[base_idx + stride]
+
+
+                        #now need to calculate twiddle factor
+                        abs_index = (row * self.butterfly_count) + base_idx
+
+
+                        #this tells us which group of weights
+                        position_in_group = abs_index % stride
+
+                        #twiddle stride because the number of indexed decreases each stage.
+                        twiddle_stride = self.point_size // (2 * stride)
+
+                        #twiddle index.
+                        k = position_in_group * twiddle_stride
+
+                        twiddle = self.get_twiddle_factor(k)
+
+                        #butterfly unit
+                        out_a, out_b = self.butterfly_unit(val_a, val_b, twiddle)
+                        
+                        #if base_idx is less than butterfly count so in first row
+                        if base_idx < self.butterfly_count:
+                            output_first_row[base_idx] = out_a
+                        #base_idx is in the second row.
+                        else:
+                            output_second_row[base_idx - self.butterfly_count] = out_a
+
+                        #base_idx + stride
+                        bot_idx = base_idx + stride
+
+                        #bot_idx is the bottom input.
+                        if bot_idx < self.butterfly_count:
+                            output_first_row[bot_idx] = out_b
+
+                        else:
+                            output_second_row[bot_idx - self.butterfly_count] = out_b
+
+                    write_sram[row] = output_first_row
+                    write_sram[row + 1] = output_second_row
+
+                    #increase row
+                    row += 2
+
 
             
             #ping pong effect to switch sram banks after each stage.
             if(self.operating_sram == 'a'):
                 self.operating_sram = 'b'
                 current_sram = self.sram_b
+                write_sram = self.sram_a
             else:
                 self.operating_sram = 'a'
                 current_sram = self.sram_a
-
-
-                        
+                write_sram = self.sram_b
 
             #update stride for the next cycle.
             stride = stride // 2
