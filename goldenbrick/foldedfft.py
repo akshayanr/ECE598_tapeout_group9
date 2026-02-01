@@ -93,8 +93,8 @@ class Reconfigurable_FFT:
         WIDTH = self.butterfly_count
 
 
-        row = input_index // WIDTH   
-        col = input_index % WIDTH
+        row = input_address // WIDTH   
+        col = input_address % WIDTH
         
         if sram_bank == 'a':
             return self.sram_a[row][col]
