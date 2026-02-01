@@ -49,7 +49,7 @@ sim_butterfly:
 	python goldenbrick/butterfly_gb.py -b > verilog//butterfly/butterfly_gb.txt;
 	cd verilog/butterfly; $(VV) $(VVOPTS) $(STD_CELLS) $(BUTTERFLY_SIM_FILES) $(BUTTERFLY_TESTBENCH); ./$@
 	cp verilog/butterfly/butterfly_tb.txt verilog/butterfly/butterfly_behavioral.txt 
-	diff verilog/butterfly/butterfly_gb.txt verilog//butterfly/butterfly_behavioral.txt | tee verilog//butterfly/diff_behavioral.txt
+	diff verilog/butterfly/butterfly_gb.txt verilog//butterfly/butterfly_behavioral.txt | tee verilog/butterfly/diff_behavioral.txt
 
 syn_butterfly: 
 	cd syn/butterfly; dc_shell -tcl_mode -xg_mode -f butterfly.syn.tcl | tee output.txt
@@ -58,7 +58,7 @@ sim_syn_butterfly: syn_butterfly
 	python goldenbrick/butterfly_gb.py -b > verilog//butterfly/butterfly_gb.txt;
 	cd verilog/butterfly; $(VV) $(VVOPTS) +define+SYN=1 $(STD_CELLS) $(BUTTERFLY_SYN_FILES) $(BUTTERFLY_TESTBENCH); ./$@
 	cp verilog/butterfly/butterfly_tb.txt verilog/butterfly/butterfly_structural.txt 
-	diff verilog/butterfly/butterfly_gb.txt verilog//butterfly/butterfly_structural.txt | tee verilog//butterfly/diff_structural.txt
+	diff verilog/butterfly/butterfly_gb.txt verilog//butterfly/butterfly_structural.txt | tee verilog/butterfly/diff_structural.txt
 
 sim:
 	cd verilog; $(VV) $(VVOPTS) $(STD_CELLS) $(SIM_FILES) $(TESTBENCH); ./$@
