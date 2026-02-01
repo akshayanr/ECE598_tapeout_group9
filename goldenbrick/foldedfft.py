@@ -228,9 +228,9 @@ class Reconfigurable_FFT:
                         twiddle_stride = self.point_size // (2 * stride)
 
                         #twiddle index.
-                        k = position_in_group * twiddle_stride
+                        twiddle_idx = position_in_group * twiddle_stride
 
-                        twiddle = self.get_twiddle_factor(k)
+                        twiddle = self.get_twiddle_factor(twiddle_idx)
 
                         #butterfly unit
                         out_a, out_b = self.butterfly_unit(val_a, val_b, twiddle)
