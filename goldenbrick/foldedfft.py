@@ -74,8 +74,8 @@ class Reconfigurable_FFT:
         WIDTH = self.butterfly_count
 
 
-        row = input_index // WIDTH   
-        col = input_index % WIDTH
+        row = input_address // WIDTH   
+        col = input_address % WIDTH
 
         #NEED TO KEEP IN MIND THAT READ ADDRESS TRANSLATION WILL HAVE TO BE DONE IN THE ADDRESS DECODER
         #AND WE NEED TO WORRY ABOUT ACTIVATING THE ENTIRE LINE.
