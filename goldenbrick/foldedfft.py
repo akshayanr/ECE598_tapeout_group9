@@ -43,6 +43,17 @@ class Reconfigurable_FFT:
     def get_done(self):
         return self.done
     
+    #this function is purely for debugging; it's there for comparison with an actual fft.
+    def sram_read_debug(self):
+        #we write to write_sram not the operating - which we use for reading, so need to return the write_sram
+        #but no, we swap always at the end, so the former write_sram becomes the actual sram.
+        if self.operating_sram == 'a':
+            return self.sram_a
+        else:
+            return self.sram_b
+
+
+    
     #can tell which sram is the most recently operated on.
     def get_operating_sram(self):
         return self.operating_sram
