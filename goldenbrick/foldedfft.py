@@ -158,60 +158,54 @@ class Reconfigurable_FFT:
 
                     #there is grouping, so when N = 8, and stride is 2 and butterfly is like 1
                     #the instance where 4 needs to map to 6 but instead will pair with 8.
+
+                    #this maps the group that the row belongs to.
                     group = idx // stride 
+
+                    #offet is the distance to the bottom.
                     offset = idx % stride
                     
+                    #stride is to jump to the correct group.
                     base_top_idx = (group * (2 * stride)) + offset
+
+                    #the bottom gets the stride. 
                     base_bot_idx = base_top_idx + stride
                     
                     # Convert logical indices to SRAM Rows
                     top_row = base_top_idx // self.butterfly_count
                     bot_row = base_bot_idx // self.butterfly_count
 
-                    #the row that we want.
-                    row = idx // self.butterfly_count
-
-                    #get the row that we want.
-                    bottom_row = stride // self.butterfly_count
-
-                    input_top = current_sram[row]
-                    input_bot = current_sram[row + bottom_row]
+                    input_top = current_sram[top_row]
+                    input_bot = current_sram[bot_row]
 
                     output_top = [0j] * self.butterfly_count
                     output_bot = [0j] * self.butterfly_count
         
-                    #iterate through each index embedded in sram word
                     for col_idx in range(self.butterfly_count):
-                        
-                        #grab the inputs from the rows
                         val_a = input_top[col_idx]
                         val_b = input_bot[col_idx]
 
-                        # calculate absolute index of the top value in the FFT, like any number from index 0 to 1024.
-                        abs_index = (row * self.butterfly_count) + col_idx 
-
-                        #this tells us which group of weights
+                        #the absolute index -> some number from 0 to 1024.
+                        abs_index = base_top_idx + col_idx
+                        
+                        #position in group determined by stride.
                         position_in_group = abs_index % stride
 
-                        #twiddle stride because the number of indexed decreases each stage.
+                        #the jump per stride.
                         twiddle_stride = self.point_size // (2 * stride)
 
-                        #twiddle index
+                        #the position and the stride.
                         k = position_in_group * twiddle_stride
-                        
+
                         twiddle = self.get_twiddle_factor(k)
 
-                        #run the butterfly
                         out_a, out_b = self.butterfly_unit(val_a, val_b, twiddle)
                         
-                        #Store into output buffers
                         output_top[col_idx] = out_a
                         output_bot[col_idx] = out_b
 
-                    #write the finished rows to the Destination SRAM
-                    #want to write after the entire row is processed
-                    write_sram[row] = output_top
-                    write_sram[row + bottom_row] = output_bot
+                    write_sram[top_row] = output_top
+                    write_sram[bot_row] = output_bot
 
             #intra-row case:
             else:
@@ -349,13 +343,10 @@ def run_test_case(test_name, input_signal, fft_hw, N):
     # We accept a small tolerance (1e-5) for floating point rounding differences
     is_match = np.allclose(hw_output_ordered, np_result, atol=1e-5)
 
-    print(np_result)
-    print(hw_output_ordered)
-    
     # Report
-    # max_error = np.max(np.abs(np.array(hw_output_ordered) - np_result))
-    # print(f"   Status: {'PASS' if is_match else 'FAIL'}")
-    # print(f"   Max Error: {max_error:.6f}")
+    max_error = np.max(np.abs(np.array(hw_output_ordered) - np_result))
+    print(f"   Status: {'PASS' if is_match else 'FAIL'}")
+    print(f"   Max Error: {max_error:.6f}")
     
     return is_match
 
@@ -371,20 +362,20 @@ if __name__ == "__main__":
 
     # --- TEST 1: Pure Sine Wave ---
     # Good for checking frequency alignment
-    t = np.linspace(0, 1, N)
+    t = np.linspace(0, 1, N, endpoint=False)
     signal_sine = np.sin(2 * np.pi * 50 * t) # 50 Hz tone
     print(run_test_case("Sine Wave (50Hz)", signal_sine, fft_hw, N))
 
-    # # --- TEST 2: Impulse Response ---
-    # # Input: [1, 0, 0, ...]. Output should be [1, 1, 1, ...] (Flat Magnitude)
-    # # If this fails, your butterflies are scaling/twiddling incorrectly.
-    # signal_impulse = np.zeros(N)
-    # signal_impulse[0] = 1.0
-    # print(run_test_case("Impulse Response", signal_impulse, fft_hw, N))
+    # --- TEST 2: Impulse Response ---
+    # Input: [1, 0, 0, ...]. Output should be [1, 1, 1, ...] (Flat Magnitude)
+    # If this fails, your butterflies are scaling/twiddling incorrectly.
+    signal_impulse = np.zeros(N)
+    signal_impulse[0] = 1.0
+    print(run_test_case("Impulse Response", signal_impulse, fft_hw, N))
 
-    # # --- TEST 3: Random Complex Noise ---
-    # # Stress tests every path with non-symmetrical data
-    # np.random.seed(42) # Deterministic random
-    # signal_random = np.random.rand(N) + 1j * np.random.rand(N)
-    # print(run_test_case("Random Complex Noise", signal_random, fft_hw, N))
+    # --- TEST 3: Random Complex Noise ---
+    # Stress tests every path with non-symmetrical data
+    np.random.seed(42) # Deterministic random
+    signal_random = np.random.rand(N) + 1j * np.random.rand(N)
+    print(run_test_case("Random Complex Noise", signal_random, fft_hw, N))
 
