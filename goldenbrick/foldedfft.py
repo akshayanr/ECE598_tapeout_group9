@@ -275,5 +275,7 @@ class Reconfigurable_FFT:
 
             #update stride for the next cycle.
             stride = stride // 2
-        return self.sram_a + self.sram_b
+        
+        #fft is done, so
+        self.done = True
 
