@@ -29,7 +29,8 @@ def generate_twiddle_rom(options):
 
         # Print
         if options.binary:
-            print(prefix + "{0:04X}{1:04X}".format(real.view(np.uint16), imag.view(np.uint16)))
+            address = "@{0:08x} ".format(idx)
+            print(prefix + address + "{0:04x}{1:04x}".format(real.view(np.uint16), imag.view(np.uint16)))
         else:
             print(prefix + f"{real} {imag}")
     
