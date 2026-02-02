@@ -76,19 +76,18 @@ def main(options):
 
 
 parser = argparse.ArgumentParser(
-                    prog='butterfly_gb.py',
-                    description='generates the goldenbrick for the butterfly unit',
+                    prog='mult_gb.py',
+                    description='generates the goldenbrick for the complex mult unit',
                     epilog='teehee')
 
-# parser.add_argument('output_file')                      # positional arg for the output file
-parser.add_argument('-n', '--num_inputs', default=8)     # the number of butterflies to do
-parser.add_argument('-s', '--seed', default=42)           # rng seed
+parser.add_argument('-n', '--num_inputs', type=int, default=8)      # the number of multiplies to do
+parser.add_argument('-s', '--seed', type=int, default=42)           # rng seed
 parser.add_argument('-v', '--verbose',                    # verbose output or not
                     action='store_true')
 parser.add_argument('-b', '--binary',                     # output in binary
                     action='store_true')
-parser.add_argument('-u', '--upper', default=10.0)        # the upper bound of inputs
-parser.add_argument('-l', '--lower', default=-10.0)       # the lower bound of inputs
+parser.add_argument('-u', '--upper', type=float, default=10.0)        # the upper bound of inputs
+parser.add_argument('-l', '--lower', type=float, default=-10.0)       # the lower bound of inputs
 
 
 options = parser.parse_args()
