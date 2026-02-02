@@ -146,8 +146,11 @@ class Reconfigurable_FFT:
                     #the row that we want.
                     row = idx // self.butterfly_count
 
+                    #get the row that we want.
+                    bottom_row = stride // self.butterfly_count
+
                     input_top = current_sram[row]
-                    input_bot = current_sram[row + stride]
+                    input_bot = current_sram[row + bottom_row]
 
                     output_top = [0j] * self.butterfly_count
                     output_bot = [0j] * self.butterfly_count
@@ -183,7 +186,7 @@ class Reconfigurable_FFT:
                     #write the finished rows to the Destination SRAM
                     #want to write after the entire row is processed
                     write_sram[row] = output_top
-                    write_sram[row + stride] = output_bot
+                    write_sram[row + bottom_row] = output_bot
 
             #intra-row case:
             else:
