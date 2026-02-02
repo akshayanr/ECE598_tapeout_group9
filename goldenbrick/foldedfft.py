@@ -44,6 +44,7 @@ class Reconfigurable_FFT:
         return self.done
     
     #this function is purely for debugging; it's there for comparison with an actual fft.
+    #TODO: Need to think about which sram has the result in the verilog version
     def sram_read_debug(self):
         #we write to write_sram not the operating - which we use for reading, so need to return the write_sram
         #but no, we swap always at the end, so the former write_sram becomes the actual sram.
@@ -154,6 +155,19 @@ class Reconfigurable_FFT:
             #inter-row case:
             if stride >= self.butterfly_count:
                 for idx in range(0, total_num_butterflies, self.butterfly_count):
+
+                    #there is grouping, so when N = 8, and stride is 2 and butterfly is like 1
+                    #the instance where 4 needs to map to 6 but instead will pair with 8.
+                    group = idx // stride 
+                    offset = idx % stride
+                    
+                    base_top_idx = (group * (2 * stride)) + offset
+                    base_bot_idx = base_top_idx + stride
+                    
+                    # Convert logical indices to SRAM Rows
+                    top_row = base_top_idx // self.butterfly_count
+                    bot_row = base_bot_idx // self.butterfly_count
+
                     #the row that we want.
                     row = idx // self.butterfly_count
 
@@ -289,4 +303,88 @@ class Reconfigurable_FFT:
         
         #fft is done, so
         self.done = True
+
+
+#function that helps compare DIF with numpy's built-in version.
+def bit_reverse_reorder(data, n):
+    width = int(np.log2(n))
+    reordered = [0] * n
+    for i in range(n):
+        # Generate bit-reversed index
+        # for example -> N=8 index 1 (001) -> 4 (100)
+        rev_i = int('{:0{w}b}'.format(i, w=width)[::-1], 2)
+        reordered[rev_i] = data[i]
+    return reordered
+
+#function to run test_case
+def run_test_case(test_name, input_signal, fft_hw, N):
+    print(f"\n[TEST] Running: {test_name}")
+    
+    #load data
+    # We load into Bank 'a' and set 'a' as the active starting point
+    for i, val in enumerate(input_signal):
+        fft_hw.load_data(val, 'a', i)
+    fft_hw.set_operating_sram('a') 
+
+    #run Hardware calculate FFT
+    fft_hw.calculate_fft()
+
+    #read the output from the sram that has the result
+    result_bank = fft_hw.get_operating_sram()
+
+    #store the outputs 
+    hw_output_raw = []
+    
+    #read the outputs as you could from the chip in the verification class
+    for i in range(N):
+        hw_output_raw.append(fft_hw.read_data(result_bank, i))
+
+    #unscramble the results
+    hw_output_ordered = bit_reverse_reorder(hw_output_raw, N)
+
+    # compare with Golden Reference - NumPy
+    np_result = np.fft.fft(input_signal)
+    
+    # Calculate Error
+    # We accept a small tolerance (1e-5) for floating point rounding differences
+    is_match = np.allclose(hw_output_ordered, np_result, atol=1e-5)
+
+    print(np_result)
+    print(hw_output_ordered)
+    
+    # Report
+    # max_error = np.max(np.abs(np.array(hw_output_ordered) - np_result))
+    # print(f"   Status: {'PASS' if is_match else 'FAIL'}")
+    # print(f"   Max Error: {max_error:.6f}")
+    
+    return is_match
+
+
+if __name__ == "__main__":
+    # Configuration
+    N = 8
+    BUTTERFLY_COUNT = 1 
+    STAGES = 0 # Not used in logic yet
+    
+    print(f"INITIALIZING HW MODEL (N={N}, Width={BUTTERFLY_COUNT})")
+    fft_hw = Reconfigurable_FFT(point_size=N, butterfly_count=BUTTERFLY_COUNT, mult_pipeline_stages=STAGES)
+
+    # --- TEST 1: Pure Sine Wave ---
+    # Good for checking frequency alignment
+    t = np.linspace(0, 1, N)
+    signal_sine = np.sin(2 * np.pi * 50 * t) # 50 Hz tone
+    print(run_test_case("Sine Wave (50Hz)", signal_sine, fft_hw, N))
+
+    # # --- TEST 2: Impulse Response ---
+    # # Input: [1, 0, 0, ...]. Output should be [1, 1, 1, ...] (Flat Magnitude)
+    # # If this fails, your butterflies are scaling/twiddling incorrectly.
+    # signal_impulse = np.zeros(N)
+    # signal_impulse[0] = 1.0
+    # print(run_test_case("Impulse Response", signal_impulse, fft_hw, N))
+
+    # # --- TEST 3: Random Complex Noise ---
+    # # Stress tests every path with non-symmetrical data
+    # np.random.seed(42) # Deterministic random
+    # signal_random = np.random.rand(N) + 1j * np.random.rand(N)
+    # print(run_test_case("Random Complex Noise", signal_random, fft_hw, N))
 
