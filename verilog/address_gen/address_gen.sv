@@ -35,16 +35,16 @@ module address_gen(
 
     integer i;
 
-    always_ff @(posedge clk) begin
-        if((!i_new_stage_trigger == 0) || (i_resetn == 0)) begin
+    always_ff @(posedge clk or negedge i_resetn) begin
+        if(i_new_stage_trigger || !i_resetn) begin
             address1          <= 0; 
-            address2          <= address_offset; 
+            address2          <= 0; 
         end else begin
             address1          <= address1 + address_increment; 
             address2          <= address1 + address_increment + address_offset;
         end
 
-        if((!new_group_trigger == 0) || (i_resetn == 0)) begin
+        if((new_group_trigger || !i_resetn)) begin
             group_calc_counter <= 0;
         end else if(i_working == 1) begin
             group_calc_counter <= group_calc_counter + 4;

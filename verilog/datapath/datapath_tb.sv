@@ -1,5 +1,6 @@
 `timescale 1ns/1ps
 
+// thanks gemini
 module tb_datapath();
 
     parameter BUTTERFLY_DELAY = 2;
@@ -7,27 +8,28 @@ module tb_datapath();
     localparam ADDRESS_DELAY  = BUTTERFLY_DELAY + MULT_DELAY;
     
     logic clk;
-    wire [7:0] i_addr1;
-    wire [7:0] i_addr2;
+    wire  [7:0]    i_addr1;
+    wire  [7:0]    i_addr2;
     logic [127:0] i_data1, i_data2;
     logic [9:0]   i_stride;
     logic [8:0]   tw_off[0:3];
     logic         i_valid;
     
-    wire [7:0] o_addr1;
-    wire [7:0] o_addr2;
+    wire [7:0]    o_addr1;
+    wire [7:0]    o_addr2;
     wire [127:0]  o_data1, o_data2;
     wire          o_valid;
 
     // DUT instantiation
     datapath #(BUTTERFLY_DELAY, MULT_DELAY) dut (
         .clk(clk),
+
         .i_data1(i_data1), .i_data2(i_data2),
         .i_addr1(i_addr1), .i_addr2(i_addr2),
         .i_stride(i_stride), .i_valid(i_valid),
         .i_twiddle_offset1(tw_off[0]), .i_twiddle_offset2(tw_off[1]),
         .i_twiddle_offset3(tw_off[2]), .i_twiddle_offset4(tw_off[3]),
-        /* Addr ports tied off or monitored as needed */
+
         .o_data1(o_data1), 
         .o_data2(o_data2), 
         .o_addr1(o_addr1),
@@ -60,7 +62,7 @@ module tb_datapath();
         // --- Input Driving Loop ---
         while (!$feof(in_file)) begin
             // Read 13 hex values per line
-            status = $fscanf(in_file, "%d %h %h %h %h %h %h %h %h %h %h %h %h\n", 
+            status = $fscanf(in_file, "%d %h %h %h %h %h %h %h %h %d %d %d %d\n", 
                 tmp_stride, 
                 tmp_d1[0], tmp_d1[1], tmp_d1[2], tmp_d1[3],
                 tmp_d2[0], tmp_d2[1], tmp_d2[2], tmp_d2[3],
@@ -107,6 +109,7 @@ module tb_datapath();
                 $display("[FAIL] Time %0t | Expected2: %h %h %h %h | Got: %h %h %h %h", 
                           $time, exp_d2[3], exp_d2[2], exp_d2[1], exp_d2[0],
                                  o_data2[127:96], o_data2[95:64], o_data2[63:32], o_data2[31:0]);
+                
             end else begin
                 $display("[PASS] Time %0t", $time);
             end

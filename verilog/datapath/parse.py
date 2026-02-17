@@ -2,25 +2,17 @@ import numpy as np
 import re
 import sys
 
+# thanks gemini
 def hex_to_fp16(hex_16):
-    """Converts a 4-digit hex string to a numpy float16 value."""
     try:
         bits = np.uint16(int(hex_16, 16))
         return bits.view(np.float16)
-    except ValueError:
+    except:
         return np.nan
 
 def parse_line_to_complex(hex_str):
-    """
-    Takes a string of hex and breaks it into 32-bit complex chunks.
-    Assumes [Imag(16) | Real(16)]
-    """
-    # Remove whitespace and '0x'
     clean = hex_str.replace(" ", "").replace("0x", "")
-    
-    # Split into 32-bit (8 hex char) chunks
     chunks = [clean[i:i+8] for i in range(0, len(clean), 8)]
-    
     results = []
     for chunk in chunks:
         if len(chunk) == 8:
@@ -30,32 +22,71 @@ def parse_line_to_complex(hex_str):
     return results
 
 def process_log(file_path):
-    # Regex to find timestamps and the hex data after "Expected" or "Got"
-    # Matches strings like "Expected1: a7cf4c0e..." or "Got: a8004c0f..."
     pattern = re.compile(r"(Expected\d*|Got):\s*([0-9a-fA-F\s]+)")
-    
+    # Storage to keep track of expected values to compare against "Got"
+    expected_store = {} 
+
     try:
         with open(file_path, 'r') as f:
             for line in f:
-                if "Time" in line:
-                    time_match = re.search(r"Time\s+([\d\.]+)\s*ns", line)
-                    timestamp = time_match.group(1) if time_match else "Unknown"
+                time_match = re.search(r"Time\s+([\d\.]+)\s*ns", line)
+                if not time_match: continue
+                
+                timestamp = time_match.group(1)
+                matches = pattern.findall(line)
+                
+                for label, hex_data in matches:
+                    complex_nums = parse_line_to_complex(hex_data)
                     
-                    print(f"\n{'='*60}")
-                    print(f" TIME: {timestamp} ns")
-                    print(f"{'='*60}")
+                    if "Expected" in label:
+                        # Store expected values for this time and bus (Expected1 or Expected2)
+                        expected_store[(timestamp, label)] = complex_nums
+                        print(f"\n[{timestamp}ns] Parsed {label}")
                     
-                    matches = pattern.findall(line)
-                    for label, hex_data in matches:
-                        complex_nums = parse_line_to_complex(hex_data)
-                        print(f"\n  {label}:")
-                        for i, c in enumerate(complex_nums):
-                            print(f"    Slot {i}: {c.real:>8.4f} + {c.imag:>8.4f}j")
+                    elif "Got" in label:
+                        # Determine which Expected bus to compare against 
+                        # (Usually the log prints Exp1 then Got, then Exp2 then Got)
+                        # We look for the most recent Expected entry that hasn't been "consumed"
+                        exp_label = "Expected1" if "Expected1" in line or "115.00" in timestamp else "Expected2"
+                        # Fallback logic: check if this follows an Expected1 or Expected2 print
+                        
+                        print(f"\n[{timestamp}ns] --- Comparison for {label} ---")
+                        print(f"{'Slot':<8} | {'Got Value':<25} | {'Delta (Real)':<12} | {'Delta (Imag)':<12} | {'Status'}")
+                        print("-" * 85)
+
+                        # Match with Expected1 or Expected2 based on context
+                        # Note: You may need to adjust the logic below if your log format 
+                        # pairs Got lines differently
+                        target_exp = expected_store.get((timestamp, "Expected1")) if "Expected1" in line else expected_store.get((timestamp, "Expected2"))
+                        
+                        if not target_exp:
+                            # Try simple fallback if explicit label not in line
+                            target_exp = expected_store.get((timestamp, "Expected1"))
+
+                        if target_exp:
+                            for i, got_val in enumerate(complex_nums):
+                                if i < len(target_exp):
+                                    exp_val = target_exp[i]
+                                    d_real = abs(got_val.real - exp_val.real)
+                                    d_imag = abs(got_val.imag - exp_val.imag)
+                                    
+                                    # Threshold for rounding error (FP16 has ~3 decimal digits of precision)
+                                    # Anything larger than 0.01 is likely a logic/shuffling issue
+                                    status = "OK"
+                                    if d_real > 0.1 or d_imag > 0.1:
+                                        status = "!! SHUFFLE/LOGIC !!"
+                                    elif d_real > 0 or d_imag > 0:
+                                        status = "Rounding Error"
+                                    
+                                    print(f"Slot {i:<3} | {str(got_val):<25} | {d_real:<12.6f} | {d_imag:<12.6f} | {status}")
+                        else:
+                            print("    (No matching Expected data found in log for this Got line)")
+
     except FileNotFoundError:
         print(f"Error: File '{file_path}' not found.")
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        print("Usage: python log_parser.py <your_log_file.txt>")
+        print("Usage: python log_parser.py <log_file>")
     else:
         process_log(sys.argv[1])

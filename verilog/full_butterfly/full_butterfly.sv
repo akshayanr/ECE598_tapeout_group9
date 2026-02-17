@@ -51,6 +51,8 @@ module full_butterfly #(
 
     integer i;
     always_ff @(posedge clk) begin
+        // $display("twiddle_addr %d", twiddle_addr);
+        // $display("twiddle_data %h", twiddle_data);
         for(i = 1; i < MULT_STAGES; i = i +1) begin
             butterfly_top_delay[i] <= butterfly_top_delay[i - 1];
         end

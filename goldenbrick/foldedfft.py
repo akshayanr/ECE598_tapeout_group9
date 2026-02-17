@@ -161,6 +161,9 @@ class Reconfigurable_FFT:
             input_file = open('datapath.in.txt', 'w')
             output_file = open('datapath.out.txt', 'w')
 
+        if(self.options.fft_top_test):
+            write_log = open('mem_writes.txt', 'w')
+
         for stage in range(num_stages):
             #so this idx is accurate of the cycles -> each idx would ideally be a cycle.
             #this is the number of butterflies per stage.
@@ -221,7 +224,7 @@ class Reconfigurable_FFT:
                         k = position_in_group * twiddle_stride
 
                         if(self.options.datapath_test):
-                            input_file.write(f'{k} ')
+                            input_file.write(f'{1024//self.point_size * k} ')
 
                         twiddle = self.get_twiddle_factor(k)
 
@@ -240,6 +243,15 @@ class Reconfigurable_FFT:
                             output_file.write(f'{fp16_to_hex(output_bot[butterfly].real)}{fp16_to_hex(output_bot[butterfly].imag)} ')
                         input_file.write('\n')
                         output_file.write('\n')
+                    
+                    if(self.options.fft_top_test):
+                        write_log.write(f'{top_row} ')
+                        for butterfly in range(self.butterfly_count):
+                            write_log.write(f'{fp16_to_hex(output_top[butterfly].real)}{fp16_to_hex(output_top[butterfly].imag)} ')
+                        write_log.write(f'\n{bot_row} ')
+                        for butterfly in range(self.butterfly_count):
+                            write_log.write(f'{fp16_to_hex(output_bot[butterfly].real)}{fp16_to_hex(output_bot[butterfly].imag)} ')
+                        write_log.write('\n')
 
             #intra-row case:
             else:
@@ -295,7 +307,7 @@ class Reconfigurable_FFT:
                         twiddle_idx = position_in_group * twiddle_stride
 
                         if(self.options.datapath_test):
-                            input_file.write(f'{twiddle_idx} ')
+                            input_file.write(f'{1024//self.point_size * twiddle_idx} ')
 
                         twiddle = self.get_twiddle_factor(twiddle_idx)
 
@@ -329,6 +341,15 @@ class Reconfigurable_FFT:
                             output_file.write(f'{fp16_to_hex(output_second_row[butterfly].real)}{fp16_to_hex(output_second_row[butterfly].imag)} ')
                         input_file.write('\n')
                         output_file.write('\n')
+
+                    if(self.options.fft_top_test):
+                        write_log.write(f'{row} ')
+                        for butterfly in range(self.butterfly_count):
+                            write_log.write(f'{fp16_to_hex(output_first_row[butterfly].real)}{fp16_to_hex(output_first_row[butterfly].imag)} ')
+                        write_log.write(f'\n{row+1} ')
+                        for butterfly in range(self.butterfly_count):
+                            write_log.write(f'{fp16_to_hex(output_second_row[butterfly].real)}{fp16_to_hex(output_second_row[butterfly].imag)} ')
+                        write_log.write('\n')
 
                     #increase row
                     row += 2
@@ -429,6 +450,13 @@ def main(options):
     # Stress tests every path with non-symmetrical data
     np.random.seed(42) # Deterministic random
     signal_random = np.random.rand(N).astype(np.float16) + 1j * np.random.rand(N).astype(np.float16)
+    # Generate a mem init file for our fft_top_tb
+    if(options.fft_top_test):
+        with open('mem_init.txt', 'w') as file:
+            for point in range(0, N, BUTTERFLY_COUNT):
+                for col in range(BUTTERFLY_COUNT):
+                    file.write(f'{fp16_to_hex(signal_random[point + col].real)}{fp16_to_hex(signal_random[point + col].imag)}' )
+                file.write('\n')
     print(run_test_case("Random Complex Noise", signal_random, fft_hw, N))
 
 if __name__ == "__main__":
@@ -439,9 +467,10 @@ if __name__ == "__main__":
                         description='fft_goldenbrick',
                         epilog='teehee')
 
-    parser.add_argument('-np', '--num_points', type=int, default=32)
+    parser.add_argument('-np', '--num_points', type=int, default=16)
     parser.add_argument('-nb', '--num_butterflys', type=int, default=4)
-    parser.add_argument('-td', '--datapath_test', action='store_true')
+    parser.add_argument('-datapath_test', '--datapath_test', action='store_true')
+    parser.add_argument('-fft_top_test', '--fft_top_test', action='store_true')
 
 
     options = parser.parse_args()
