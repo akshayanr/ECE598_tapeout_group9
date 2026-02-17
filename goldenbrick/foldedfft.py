@@ -1,5 +1,15 @@
 import numpy as np
 from numpy.fft import fft
+import argparse
+import sys
+import os
+
+# Add the common script to our path so we can get some epic func's
+script_dir = os.path.dirname(__file__) 
+scripts_path = os.path.join(script_dir, '../common') 
+sys.path.append(scripts_path) 
+
+from common import fp16_to_hex
 
 #NOTE: SRAM IS ACURATELY MODELED AS A 2D LIST WHERE EACH ROW IS AN ADDRESS LINE, but write and read is simplified
 #doesn't coinsider activation. 
@@ -7,7 +17,7 @@ from numpy.fft import fft
 #TODO: NEED TO FIGURE OUT WHEN WE READ DO WE READ THE WHOLE LINE, so the read signal triggers the entire line.
 
 class Reconfigurable_FFT:
-    def __init__(self, point_size, butterfly_count, mult_pipeline_stages):
+    def __init__(self, point_size, butterfly_count, mult_pipeline_stages, options):
 
         #configuration of points
         self.point_size = point_size
@@ -37,6 +47,8 @@ class Reconfigurable_FFT:
         self.operating_sram = 'a'
 
         self.done = False
+
+        self.options = options
 
 
     #can read if the fft is done operating through all stages.
@@ -145,6 +157,10 @@ class Reconfigurable_FFT:
             current_sram = self.sram_b
             write_sram = self.sram_a
        
+        if(self.options.datapath_test):
+            input_file = open('datapath.in.txt', 'w')
+            output_file = open('datapath.out.txt', 'w')
+
         for stage in range(num_stages):
             #so this idx is accurate of the cycles -> each idx would ideally be a cycle.
             #this is the number of butterflies per stage.
@@ -178,6 +194,13 @@ class Reconfigurable_FFT:
                     input_top = current_sram[top_row]
                     input_bot = current_sram[bot_row]
 
+                    if(self.options.datapath_test):
+                        input_file.write(f'{stride} ')
+                        for butterfly in range(self.butterfly_count):
+                            input_file.write(f'{fp16_to_hex(input_top[butterfly].real)}{fp16_to_hex(input_top[butterfly].imag)} ')
+                        for butterfly in range(self.butterfly_count):
+                            input_file.write(f'{fp16_to_hex(input_bot[butterfly].real)}{fp16_to_hex(input_bot[butterfly].imag)} ')
+
                     output_top = [0j] * self.butterfly_count
                     output_bot = [0j] * self.butterfly_count
         
@@ -197,6 +220,9 @@ class Reconfigurable_FFT:
                         #the position and the stride.
                         k = position_in_group * twiddle_stride
 
+                        if(self.options.datapath_test):
+                            input_file.write(f'{k} ')
+
                         twiddle = self.get_twiddle_factor(k)
 
                         out_a, out_b = self.butterfly_unit(val_a, val_b, twiddle)
@@ -207,6 +233,14 @@ class Reconfigurable_FFT:
                     write_sram[top_row] = output_top
                     write_sram[bot_row] = output_bot
 
+                    if(self.options.datapath_test):
+                        for butterfly in range(self.butterfly_count):
+                            output_file.write(f'{fp16_to_hex(output_top[butterfly].real)}{fp16_to_hex(output_top[butterfly].imag)} ')
+                        for butterfly in range(self.butterfly_count):
+                            output_file.write(f'{fp16_to_hex(output_bot[butterfly].real)}{fp16_to_hex(output_bot[butterfly].imag)} ')
+                        input_file.write('\n')
+                        output_file.write('\n')
+
             #intra-row case:
             else:
                 row = 0
@@ -214,6 +248,14 @@ class Reconfigurable_FFT:
                 while row < active_depth:
                     first_row = current_sram[row]
                     second_row = current_sram[row + 1]
+
+                    if(self.options.datapath_test):
+                        input_file.write(f'{stride} ')
+                        for butterfly in range(self.butterfly_count):
+                            input_file.write(f'{fp16_to_hex(first_row[butterfly].real)}{fp16_to_hex(first_row[butterfly].imag)} ')
+                        for butterfly in range(self.butterfly_count):
+                            input_file.write(f'{fp16_to_hex(second_row[butterfly].real)}{fp16_to_hex(second_row[butterfly].imag)} ')
+
 
                     #create a data_pool of both rows
                     data_pool = first_row + second_row
@@ -252,6 +294,9 @@ class Reconfigurable_FFT:
                         #twiddle index.
                         twiddle_idx = position_in_group * twiddle_stride
 
+                        if(self.options.datapath_test):
+                            input_file.write(f'{twiddle_idx} ')
+
                         twiddle = self.get_twiddle_factor(twiddle_idx)
 
                         #butterfly unit
@@ -276,6 +321,14 @@ class Reconfigurable_FFT:
 
                     write_sram[row] = output_first_row
                     write_sram[row + 1] = output_second_row
+
+                    if(self.options.datapath_test):
+                        for butterfly in range(self.butterfly_count):
+                            output_file.write(f'{fp16_to_hex(output_first_row[butterfly].real)}{fp16_to_hex(output_first_row[butterfly].imag)} ')
+                        for butterfly in range(self.butterfly_count):
+                            output_file.write(f'{fp16_to_hex(output_second_row[butterfly].real)}{fp16_to_hex(output_second_row[butterfly].imag)} ')
+                        input_file.write('\n')
+                        output_file.write('\n')
 
                     #increase row
                     row += 2
@@ -350,15 +403,14 @@ def run_test_case(test_name, input_signal, fft_hw, N):
     
     return is_match
 
-
-if __name__ == "__main__":
+def main(options):
     # Configuration
-    N = 8
-    BUTTERFLY_COUNT = 1 
+    N = options.num_points
+    BUTTERFLY_COUNT = options.num_butterflys
     STAGES = 0 # Not used in logic yet
     
     print(f"INITIALIZING HW MODEL (N={N}, Width={BUTTERFLY_COUNT})")
-    fft_hw = Reconfigurable_FFT(point_size=N, butterfly_count=BUTTERFLY_COUNT, mult_pipeline_stages=STAGES)
+    fft_hw = Reconfigurable_FFT(point_size=N, butterfly_count=BUTTERFLY_COUNT, mult_pipeline_stages=STAGES, options=options)
 
     # --- TEST 1: Pure Sine Wave ---
     # Good for checking frequency alignment
@@ -376,6 +428,22 @@ if __name__ == "__main__":
     # --- TEST 3: Random Complex Noise ---
     # Stress tests every path with non-symmetrical data
     np.random.seed(42) # Deterministic random
-    signal_random = np.random.rand(N) + 1j * np.random.rand(N)
+    signal_random = np.random.rand(N).astype(np.float16) + 1j * np.random.rand(N).astype(np.float16)
     print(run_test_case("Random Complex Noise", signal_random, fft_hw, N))
 
+if __name__ == "__main__":
+
+
+    parser = argparse.ArgumentParser(
+                        prog='foldedfft.py',
+                        description='fft_goldenbrick',
+                        epilog='teehee')
+
+    parser.add_argument('-np', '--num_points', type=int, default=32)
+    parser.add_argument('-nb', '--num_butterflys', type=int, default=4)
+    parser.add_argument('-td', '--datapath_test', action='store_true')
+
+
+    options = parser.parse_args()
+
+    main(options)
