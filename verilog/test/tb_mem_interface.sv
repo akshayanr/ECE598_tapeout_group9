@@ -48,6 +48,7 @@ module tb_mem_interface();
         .raddress2(raddress2), .rdata2(rdata2),
         .waddress1(waddress1), .wdata1(wdata1),
         .waddress2(waddress2), .wdata2(wdata2),
+        .global_write_enable(1),
         .sram_read_register(sram_read_register),
         
         // SRAM0 Connections
