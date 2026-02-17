@@ -7,6 +7,7 @@ module mem_interface (
     input  [127:0] wdata1,
     input  [7:0]   waddress2,
     input  [127:0] wdata2,
+    input          global_write_enable,
     input          sram_read_register,
       
     // SRAM0 Ports
@@ -58,8 +59,10 @@ assign SRAM0_CEBA0 = 1'b0; assign SRAM0_CEBB0 = 1'b0;
 assign SRAM0_CEBA1 = 1'b0; assign SRAM0_CEBB1 = 1'b0;
 
 // sram_read_register == 0: WE is 1 (Read Mode). sram_read_register == 1: WE is 0 (Write Mode).
-assign SRAM0_WEBA0 = ~sram_read_register; assign SRAM0_WEBB0 = ~sram_read_register;
-assign SRAM0_WEBA1 = ~sram_read_register; assign SRAM0_WEBB1 = ~sram_read_register;
+assign SRAM0_WEBA0 = ~(global_write_enable & sram_read_register); 
+assign SRAM0_WEBB0 = ~(global_write_enable & sram_read_register);
+assign SRAM0_WEBA1 = ~(global_write_enable & sram_read_register); 
+assign SRAM0_WEBB1 = ~(global_write_enable & sram_read_register);
 
 // sram_read_register == 0: gets raddress. sram_read_register == 1: gets waddress.
 assign SRAM0_AA0 = sram_read_register ? waddress1 : raddress1;
@@ -85,8 +88,10 @@ assign SRAM1_CEBA0 = 1'b0; assign SRAM1_CEBB0 = 1'b0;
 assign SRAM1_CEBA1 = 1'b0; assign SRAM1_CEBB1 = 1'b0;
 
 // sram_read_register == 0: WE is 0 (Write Mode). sram_read_register == 1: WE is 1 (Read Mode).
-assign SRAM1_WEBA0 = sram_read_register; assign SRAM1_WEBB0 = sram_read_register;
-assign SRAM1_WEBA1 = sram_read_register; assign SRAM1_WEBB1 = sram_read_register;
+assign SRAM1_WEBA0 = ~(global_write_enable & ~sram_read_register); 
+assign SRAM1_WEBB0 = ~(global_write_enable & ~sram_read_register);
+assign SRAM1_WEBA1 = ~(global_write_enable & ~sram_read_register);
+assign SRAM1_WEBB1 = ~(global_write_enable & ~sram_read_register);
 
 // sram_read_register == 0: gets waddress. sram_read_register == 1: gets raddress.
 assign SRAM1_AA0 = sram_read_register ? raddress1 : waddress1;
