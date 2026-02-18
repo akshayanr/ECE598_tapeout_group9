@@ -163,6 +163,7 @@ class Reconfigurable_FFT:
 
         if(self.options.fft_top_test):
             write_log = open('mem_writes.txt', 'w')
+            write_log_fp16 = open('mem_writes_fp16.txt', 'w')
 
         for stage in range(num_stages):
             #so this idx is accurate of the cycles -> each idx would ideally be a cycle.
@@ -247,11 +248,18 @@ class Reconfigurable_FFT:
                     if(self.options.fft_top_test):
                         write_log.write(f'{top_row} ')
                         for butterfly in range(self.butterfly_count):
-                            write_log.write(f'{fp16_to_hex(output_top[butterfly].real)}{fp16_to_hex(output_top[butterfly].imag)} ')
+                            write_log.write(f'{fp16_to_hex(output_top[self.butterfly_count - 1 - butterfly].real)}{fp16_to_hex(output_top[self.butterfly_count - 1 - butterfly].imag)} ')
                         write_log.write(f'\n{bot_row} ')
                         for butterfly in range(self.butterfly_count):
-                            write_log.write(f'{fp16_to_hex(output_bot[butterfly].real)}{fp16_to_hex(output_bot[butterfly].imag)} ')
+                            write_log.write(f'{fp16_to_hex(output_bot[self.butterfly_count - 1 - butterfly].real)}{fp16_to_hex(output_bot[self.butterfly_count - 1 - butterfly].imag)} ')
                         write_log.write('\n')
+                        write_log_fp16.write(f'{top_row} ')
+                        for butterfly in range(self.butterfly_count):
+                            write_log_fp16.write(f'{(output_top[self.butterfly_count - 1 - butterfly].real)}{(output_top[self.butterfly_count - 1 - butterfly].imag)} ')
+                        write_log_fp16.write(f'\n{bot_row} ')
+                        for butterfly in range(self.butterfly_count):
+                            write_log_fp16.write(f'{(output_bot[self.butterfly_count - 1 - butterfly].real)}{(output_bot[self.butterfly_count - 1 - butterfly].imag)} ')
+                        write_log_fp16.write('\n')
 
             #intra-row case:
             else:
@@ -264,9 +272,9 @@ class Reconfigurable_FFT:
                     if(self.options.datapath_test):
                         input_file.write(f'{stride} ')
                         for butterfly in range(self.butterfly_count):
-                            input_file.write(f'{fp16_to_hex(first_row[butterfly].real)}{fp16_to_hex(first_row[butterfly].imag)} ')
+                            input_file.write(f'{fp16_to_hex(first_row[butterfly].real)} {fp16_to_hex(first_row[butterfly].imag)} ')
                         for butterfly in range(self.butterfly_count):
-                            input_file.write(f'{fp16_to_hex(second_row[butterfly].real)}{fp16_to_hex(second_row[butterfly].imag)} ')
+                            input_file.write(f'{fp16_to_hex(second_row[butterfly].real)} {fp16_to_hex(second_row[butterfly].imag)} ')
 
 
                     #create a data_pool of both rows
@@ -345,11 +353,18 @@ class Reconfigurable_FFT:
                     if(self.options.fft_top_test):
                         write_log.write(f'{row} ')
                         for butterfly in range(self.butterfly_count):
-                            write_log.write(f'{fp16_to_hex(output_first_row[butterfly].real)}{fp16_to_hex(output_first_row[butterfly].imag)} ')
+                            write_log.write(f'{fp16_to_hex(output_first_row[self.butterfly_count - 1 - butterfly].real)}{fp16_to_hex(output_first_row[self.butterfly_count - 1 - butterfly].imag)} ')
                         write_log.write(f'\n{row+1} ')
                         for butterfly in range(self.butterfly_count):
-                            write_log.write(f'{fp16_to_hex(output_second_row[butterfly].real)}{fp16_to_hex(output_second_row[butterfly].imag)} ')
+                            write_log.write(f'{fp16_to_hex(output_second_row[self.butterfly_count - 1 - butterfly].real)}{fp16_to_hex(output_second_row[self.butterfly_count - 1 - butterfly].imag)} ')
                         write_log.write('\n')
+                        write_log_fp16.write(f'{row} ')
+                        for butterfly in range(self.butterfly_count):
+                            write_log_fp16.write(f'{(output_first_row[self.butterfly_count - 1 - butterfly].real)} {(output_first_row[self.butterfly_count - 1 - butterfly].imag)} ')
+                        write_log_fp16.write(f'\n{row + 1} ')
+                        for butterfly in range(self.butterfly_count):
+                            write_log_fp16.write(f'{(output_second_row[self.butterfly_count - 1 - butterfly].real)} {(output_second_row[self.butterfly_count - 1 - butterfly].imag)} ')
+                        write_log_fp16.write('\n')
 
                     #increase row
                     row += 2
@@ -437,27 +452,49 @@ def main(options):
     # Good for checking frequency alignment
     t = np.linspace(0, 1, N, endpoint=False)
     signal_sine = np.sin(2 * np.pi * 50 * t) # 50 Hz tone
+    if(options.fft_top_test):
+        with open('mem_init.txt', 'w') as file:
+            for point in range(0, N, BUTTERFLY_COUNT):
+                for col in range(BUTTERFLY_COUNT):
+                    # Want MSB first in mem init file
+                    file.write(f'{fp16_to_hex(signal_sine[point + (BUTTERFLY_COUNT - 1 - col)].real)}{fp16_to_hex(signal_sine[point + (BUTTERFLY_COUNT - 1 - col)].imag)}' )
+                file.write('\n')
     print(run_test_case("Sine Wave (50Hz)", signal_sine, fft_hw, N))
 
     # --- TEST 2: Impulse Response ---
     # Input: [1, 0, 0, ...]. Output should be [1, 1, 1, ...] (Flat Magnitude)
     # If this fails, your butterflies are scaling/twiddling incorrectly.
-    signal_impulse = np.zeros(N)
-    signal_impulse[0] = 1.0
-    print(run_test_case("Impulse Response", signal_impulse, fft_hw, N))
+    # signal_impulse = np.zeros(N)
+    # signal_impulse[0] = 1.0
+    # print(run_test_case("Impulse Response", signal_impulse, fft_hw, N))
 
     # --- TEST 3: Random Complex Noise ---
     # Stress tests every path with non-symmetrical data
-    np.random.seed(42) # Deterministic random
-    signal_random = np.random.rand(N).astype(np.float16) + 1j * np.random.rand(N).astype(np.float16)
+    # np.random.seed(42) # Deterministic random
+    # signal_random = np.random.rand(N).astype(np.float16) + 1j * np.random.rand(N).astype(np.float16)
     # Generate a mem init file for our fft_top_tb
-    if(options.fft_top_test):
-        with open('mem_init.txt', 'w') as file:
-            for point in range(0, N, BUTTERFLY_COUNT):
-                for col in range(BUTTERFLY_COUNT):
-                    file.write(f'{fp16_to_hex(signal_random[point + col].real)}{fp16_to_hex(signal_random[point + col].imag)}' )
-                file.write('\n')
-    print(run_test_case("Random Complex Noise", signal_random, fft_hw, N))
+    # if(options.fft_top_test):
+    #     with open('mem_init.txt', 'w') as file:
+    #         for point in range(0, N, BUTTERFLY_COUNT):
+    #             for col in range(BUTTERFLY_COUNT):
+    #                 # Want MSB first in mem init file
+    #                 file.write(f'{fp16_to_hex(signal_random[point + (BUTTERFLY_COUNT - 1 - col)].real)}{fp16_to_hex(signal_random[point + (BUTTERFLY_COUNT - 1 - col)].imag)}' )
+    #             file.write('\n')
+    # print(run_test_case("Random Complex Noise", signal_random, fft_hw, N))
+
+    # if(options.fft_top_test):
+    #     # --- TEST 4: Linear function ---
+    #     # Counts up by 1
+    #     linear_signal = np.linspace(0, N-1, N)
+    #     print(linear_signal)
+    #     # Generate a mem init file for our fft_top_tb
+    #     with open('mem_init.txt', 'w') as file:
+    #         for point in range(0, N, BUTTERFLY_COUNT):
+    #             for col in range(BUTTERFLY_COUNT):
+    #                 # Want MSB first in mem init file
+    #                 file.write(f'{fp16_to_hex(linear_signal[point + (BUTTERFLY_COUNT - 1 - col)].real)}{fp16_to_hex(linear_signal[point + (BUTTERFLY_COUNT - 1 - col)].imag)}' )
+    #             file.write('\n')
+    #     print(run_test_case("Linear y = x", linear_signal, fft_hw, N))
 
 if __name__ == "__main__":
 

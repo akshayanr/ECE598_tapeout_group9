@@ -54,10 +54,21 @@ assign o_addr1 = address1_delay[ADDRESS_DELAY-1];
 assign o_addr2 = address2_delay[ADDRESS_DELAY-1];
 assign o_valid = valid_delay[ADDRESS_DELAY-1];
 
+logic [127:0] data1_in;
+logic [127:0] data2_in;
+logic [7:0] addr1_in;
+logic [7:0] addr2_in;
+
+// If the data isn't valid, don't pass junk through the pipeline
+assign data1_in = i_valid ? i_data1 : 128'd0;
+assign data2_in = i_valid ? i_data2 : 128'd0;
+assign addr1_in = i_valid ? i_addr1 : 8'd0;
+assign addr2_in = i_valid ? i_addr2 : 8'd0;
+
 butterfly_xbar_in xbar_in (
     .i_STRIDE(i_stride),
-    .i_READ_OUTPUT1(i_data1), 
-    .i_READ_OUTPUT2(i_data2),
+    .i_READ_OUTPUT1(data1_in), 
+    .i_READ_OUTPUT2(data2_in),
 
     .o_BUTTERFLY_1_TOP(butterfly_1_top_in), 
     .o_BUTTERFLY_2_TOP(butterfly_2_top_in), 
@@ -140,8 +151,8 @@ always_ff @(posedge clk) begin
         stride_delay[i]   <= stride_delay[i-1];
     end
 
-    address1_delay[0] <= i_addr1;
-    address2_delay[0] <= i_addr2;
+    address1_delay[0] <= addr1_in;
+    address2_delay[0] <= addr2_in;
     valid_delay[0]    <= i_valid;
     stride_delay[0]   <= i_stride;
 end

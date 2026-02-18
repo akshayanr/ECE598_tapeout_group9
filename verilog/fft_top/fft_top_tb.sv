@@ -76,13 +76,14 @@ module tb_fft_top();
         // C. Reset Sequence
         rstn = 0;
         i_working = 0;
-        i_point_config = 3'b000; // Set your config (e.g., 0 for 8-point, etc.)
+        i_point_config = 3'b111; // Set your config (e.g., 0 for 8-point, etc.)
+        $display("point_config: %d", i_point_config);
         
-        repeat(5) @(posedge clk);
+        repeat(5) @(negedge clk);
         rstn = 1;
         
         // D. Start FFT
-        @(posedge clk);
+        @(negedge clk);
         i_working = 1;
         $display("Starting FFT execution...");
 
@@ -148,9 +149,9 @@ module tb_fft_top();
 
         // 2. Check Data (Bitwise Exact)
         if (dut_data !== full_exp_data) begin
-            $display("[%t] [FAIL] %s Data Mismatch at Addr %d", $time, port_name, dut_addr);
-            $display("   Expected: %h %h %h %h", exp_d3, exp_d2, exp_d1, exp_d0);
-            $display("   Got:      %h %h %h %h", dut_data[127:96], dut_data[95:64], dut_data[63:32], dut_data[31:0]);
+            $display("[%t] [FAIL] %s Data Mismatch! Expected: %h %h %h %h  Got: %h %h %h %h", 
+            $time, port_name, 
+            exp_d3, exp_d2, exp_d1, exp_d0, dut_data[127:96], dut_data[95:64], dut_data[63:32], dut_data[31:0]);
         end else begin
             $display("[%t] [PASS] %s Write Addr %d OK", $time, port_name, dut_addr);
         end
@@ -161,7 +162,6 @@ module tb_fft_top();
             // The output file lists outputs sequentially.
             // Assumption: The file lists Port 1's write first, then Port 2's write.
             // Adjust order below if your file is "Port 2 then Port 1".
-            $display("Write!");
             check_port(o_waddress1, o_wdata1, "Port 1");
             check_port(o_waddress2, o_wdata2, "Port 2");
         end

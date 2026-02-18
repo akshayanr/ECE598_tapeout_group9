@@ -1,4 +1,5 @@
 module point_config #(
+    // Want this to match the time it takes for data to exit the datapath and be written
     parameter DELAY = 5
 )(
     input clk,
@@ -28,6 +29,8 @@ module point_config #(
     logic [9:0] calcs_stride;
     logic [7:0] stride_idx_offset;
     logic [7:0] group_offset;
+    // Algo fix
+    logic [7:0] internal_group_offset;
 
     logic new_stage_trigger; 
     logic sram_read_register;
@@ -39,7 +42,7 @@ module point_config #(
     
     assign o_calcs_per_group        = calcs_stride; 
     assign o_stride_index_offset    = stride_idx_offset;
-    assign o_stride                 = calcs_stride; 
+    assign o_stride                 = calcs_stride;
     assign o_group_offset           = group_offset;
     assign o_new_stage_trigger      = new_stage_trigger;
     assign o_sram_read_register     = sram_read_register;
@@ -73,20 +76,37 @@ module point_config #(
             3'b111: reset_stride_idx_offset = 128;
         endcase
 
+        // case (i_point_configuration)
+        //     3'b000: reset_group_offset = 1;
+        //     3'b001: reset_group_offset = 3;
+        //     3'b010: reset_group_offset = 5;
+        //     3'b011: reset_group_offset = 7;
+        //     3'b100: reset_group_offset = 9;
+        //     3'b101: reset_group_offset = 11;
+        //     3'b110: reset_group_offset = 13;
+        //     3'b111: reset_group_offset = 15;
+        // endcase
+
+        // Algo fix
         case (i_point_configuration)
-            3'b000: reset_group_offset = 1;
-            3'b001: reset_group_offset = 3;
-            3'b010: reset_group_offset = 5;
-            3'b011: reset_group_offset = 7;
-            3'b100: reset_group_offset = 9;
-            3'b101: reset_group_offset = 11;
-            3'b110: reset_group_offset = 13;
-            3'b111: reset_group_offset = 15;
+            3'b000: reset_group_offset = 0;
+            3'b001: reset_group_offset = 2;
+            3'b010: reset_group_offset = 4;
+            3'b011: reset_group_offset = 8;
+            3'b100: reset_group_offset = 16;
+            3'b101: reset_group_offset = 32;
+            3'b110: reset_group_offset = 64;
+            3'b111: reset_group_offset = 128;
         endcase
     end
 
+    logic internal_new_stage_trigger;
     assign new_stage_trigger = (counter_delay_reg[DELAY-1] == reset_calcs_stride);
-    assign valid_data        = ((calc_counter < reset_calcs_stride) && !fft_done && i_resetn);
+    // This internal new stage trigger happens a cycle earlier than in the external modules
+    // This is becuase the updated control signals in this module need to be available
+    // when the other modules see the new_stage_trigger, doing the update a cycle early allows
+    // this
+    assign internal_new_stage_trigger = (counter_delay_reg[DELAY-2] == reset_calcs_stride);
 
     integer i;
 
@@ -95,15 +115,26 @@ module point_config #(
         if(!i_resetn) begin
             calcs_stride          <= reset_calcs_stride; 
             stride_idx_offset     <= reset_stride_idx_offset;
-            group_offset          <= reset_group_offset;
-        end else if(new_stage_trigger) begin
+            internal_group_offset <= reset_group_offset;
+            group_offset          <= reset_group_offset + 1;
+        end else if(internal_new_stage_trigger) begin
             calcs_stride          <= calcs_stride >> 1;
             stride_idx_offset     <= stride_idx_offset >> 1;
-            group_offset          <= (group_offset == 3) ? 2 : group_offset - 2;
+            // Algo fix
+            internal_group_offset <= internal_group_offset >> 1;
+            group_offset          <= (group_offset <= 3) ? 2 : (internal_group_offset >> 1) + 1;
         end else begin
             calcs_stride          <= calcs_stride; 
             stride_idx_offset     <= stride_idx_offset;
             group_offset          <= group_offset;
+        end
+
+        if(!i_resetn || fft_done) begin
+            valid_data <= 0;
+        end else if(i_working) begin
+            valid_data <= calc_counter < reset_calcs_stride;
+        end else begin
+            valid_data <= 0;
         end
 
         // Calc counter

@@ -29,6 +29,7 @@ module fft_top(
     logic [7:0]     wr_addr1;
     logic [7:0]     wr_addr2;
     logic           valid_data_out;
+    logic           fft_done;
 
     assign o_raddress1 = rd_addr1;
     assign o_raddress2 = rd_addr2;
@@ -39,6 +40,7 @@ module fft_top(
     assign o_wdata1    = wr_data1;
     assign o_wdata2    = wr_data2;
     assign o_global_write_enable = valid_data_out;
+    assign o_fft_done  = fft_done;
 
     // Outputs for point config
     logic       new_stage_trigger;
@@ -58,7 +60,7 @@ module fft_top(
         .o_new_stage_trigger(new_stage_trigger),
         .o_sram_read_register(o_sram_read_register),
         .o_valid_data(valid_data_in),
-        .o_fft_done(o_fft_done),
+        .o_fft_done(fft_done),
         .o_calcs_per_group(calcs_per_group),
         .o_stride_index_offset(stride_index_offset),
         .o_stride(stride),
@@ -76,6 +78,7 @@ module fft_top(
         .i_stride_idx_offset(stride_index_offset),
         .i_group_offset(group_offset),
         .i_new_stage_trigger(new_stage_trigger),
+        .i_fft_done(fft_done),
 
         .o_group_done(group_done),
         .o_address_1(rd_addr1),
@@ -92,8 +95,11 @@ module fft_top(
         .i_resetn(rstn),
         .i_point_configuration(i_point_config),
         .i_stride(stride),
+//        .i_working(i_working),
         .i_group_done(group_done),
         .i_new_stage_trigger(new_stage_trigger),
+//        .i_fft_done(fft_done),
+        .i_data_valid(valid_data_in),
 
         .o_butterfly1_twiddle(butterfly1_twiddle),
         .o_butterfly2_twiddle(butterfly2_twiddle),
@@ -101,12 +107,19 @@ module fft_top(
         .o_butterfly4_twiddle(butterfly4_twiddle)
     );
 
+    logic [7:0] rd_addr1_delayed;
+    logic [7:0] rd_addr2_delayed;
+    always @(posedge clk) begin
+        rd_addr1_delayed <= rd_addr1;
+        rd_addr2_delayed <= rd_addr2;
+    end
+
     datapath data(
         .clk(clk),
         .i_data1(rd_data1),
         .i_data2(rd_data2),
-        .i_addr1(rd_addr1),
-        .i_addr2(rd_addr2),
+        .i_addr1(rd_addr1_delayed),
+        .i_addr2(rd_addr2_delayed),
         .i_valid(valid_data_in),
         .i_stride(stride),
         .i_twiddle_offset1(butterfly1_twiddle),
