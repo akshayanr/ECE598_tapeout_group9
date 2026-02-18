@@ -1,9 +1,10 @@
 module fft_top(
     input clk,
     input rstn,
-    input       i_working,
-    input [2:0] i_point_config,
-    output      o_fft_done,
+    input        i_working,
+    input [2:0]  i_point_config,
+    input [10:0] i_cycle_count,
+    output       o_fft_done,
     
     output  [7:0]   o_raddress1,
     output  [7:0]   o_raddress2,
@@ -56,6 +57,7 @@ module fft_top(
         .i_resetn(rstn),
         .i_point_configuration(i_point_config),
         .i_working(i_working),
+        .i_cycle_count(i_cycle_count),
 
         .o_new_stage_trigger(new_stage_trigger),
         .o_sram_read_register(o_sram_read_register),

@@ -27,6 +27,11 @@ module tb_fft_top();
     // 256 depth x 128 width
     logic [127:0] sram [0:255]; 
 
+    // Cycle counter
+    logic [10:0] i_cycle_count;
+    integer cycle_counter;
+    integer start_cycle;
+
     // File Handles
     integer f_out_check;
     integer status;
@@ -38,6 +43,7 @@ module tb_fft_top();
         .clk(clk),
         .rstn(rstn),
         .i_working(i_working),
+        .i_cycle_count(i_cycle_count),
         .i_point_config(i_point_config),
         .o_fft_done(o_fft_done),
         
@@ -60,6 +66,12 @@ module tb_fft_top();
     initial clk = 0;
     always #(`CLK_PERIOD_HALF) clk = ~clk; // 100MHz clock
 
+    always @(posedge clk) begin
+        if(rstn) begin
+            cycle_counter += 1;
+        end
+    end
+
     initial begin
         // A. Load Memory from Input File
         // We use $readmemh because your input format is raw hex strings
@@ -76,22 +88,33 @@ module tb_fft_top();
         // C. Reset Sequence
         rstn = 0;
         i_working = 0;
-        i_point_config = 3'b111; // Set your config (e.g., 0 for 8-point, etc.)
+        i_point_config = `POINT_CONFIG; // Set your config (e.g., 0 for 8-point, etc.)
+        //i_cycle_count = 11'd1261;
+        i_cycle_count = `CYCLE_CONFIG;
+        cycle_counter = 0;
         $display("point_config: %d", i_point_config);
         
-        repeat(5) @(negedge clk);
+        repeat(100) @(negedge clk);
         rstn = 1;
         
         // D. Start FFT
-        @(negedge clk);
+        repeat(100) @(negedge clk);
         i_working = 1;
+        start_cycle = cycle_counter;
         $display("Starting FFT execution...");
 
         // E. Wait for Completion
         wait(o_fft_done);
-        repeat(5) @(posedge clk);
-        
         $display("FFT Done signal received. Test Complete.");
+        $display("i_cycle_count: %d", i_cycle_count);
+        $display("Total cycles: %d", cycle_counter);
+        $display("Cycle i_working asserted: %d", start_cycle);
+        $display("Total cycles for FFT: %d", cycle_counter - start_cycle);
+        
+        // Run it for some more cycles to ensure nothing weird happens and no writes are done
+        repeat(100) @(negedge clk);
+
+        
         $fclose(f_out_check);
         $finish;
     end
@@ -159,6 +182,9 @@ module tb_fft_top();
 
     always @(posedge clk) begin
         if (o_global_write_enable) begin
+            if(o_fft_done) begin
+                $display("ERROR, WRITE OCCURRED AFTER o_fft_done WAS ASSERTED");
+            end
             // The output file lists outputs sequentially.
             // Assumption: The file lists Port 1's write first, then Port 2's write.
             // Adjust order below if your file is "Port 2 then Port 1".

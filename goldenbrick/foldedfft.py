@@ -450,16 +450,16 @@ def main(options):
 
     # --- TEST 1: Pure Sine Wave ---
     # Good for checking frequency alignment
-    t = np.linspace(0, 1, N, endpoint=False)
-    signal_sine = np.sin(2 * np.pi * 50 * t) # 50 Hz tone
-    if(options.fft_top_test):
-        with open('mem_init.txt', 'w') as file:
-            for point in range(0, N, BUTTERFLY_COUNT):
-                for col in range(BUTTERFLY_COUNT):
-                    # Want MSB first in mem init file
-                    file.write(f'{fp16_to_hex(signal_sine[point + (BUTTERFLY_COUNT - 1 - col)].real)}{fp16_to_hex(signal_sine[point + (BUTTERFLY_COUNT - 1 - col)].imag)}' )
-                file.write('\n')
-    print(run_test_case("Sine Wave (50Hz)", signal_sine, fft_hw, N))
+    # t = np.linspace(0, 1, N, endpoint=False)
+    # signal_sine = np.sin(2 * np.pi * 50 * t) # 50 Hz tone
+    # if(options.fft_top_test):
+    #     with open('mem_init.txt', 'w') as file:
+    #         for point in range(0, N, BUTTERFLY_COUNT):
+    #             for col in range(BUTTERFLY_COUNT):
+    #                 # Want MSB first in mem init file
+    #                 file.write(f'{fp16_to_hex(signal_sine[point + (BUTTERFLY_COUNT - 1 - col)].real)}{fp16_to_hex(signal_sine[point + (BUTTERFLY_COUNT - 1 - col)].imag)}' )
+    #             file.write('\n')
+    # print(run_test_case("Sine Wave (50Hz)", signal_sine, fft_hw, N))
 
     # --- TEST 2: Impulse Response ---
     # Input: [1, 0, 0, ...]. Output should be [1, 1, 1, ...] (Flat Magnitude)
@@ -470,17 +470,17 @@ def main(options):
 
     # --- TEST 3: Random Complex Noise ---
     # Stress tests every path with non-symmetrical data
-    # np.random.seed(42) # Deterministic random
-    # signal_random = np.random.rand(N).astype(np.float16) + 1j * np.random.rand(N).astype(np.float16)
+    np.random.seed(42) # Deterministic random
+    signal_random = np.random.rand(N).astype(np.float16) + 1j * np.random.rand(N).astype(np.float16)
     # Generate a mem init file for our fft_top_tb
-    # if(options.fft_top_test):
-    #     with open('mem_init.txt', 'w') as file:
-    #         for point in range(0, N, BUTTERFLY_COUNT):
-    #             for col in range(BUTTERFLY_COUNT):
-    #                 # Want MSB first in mem init file
-    #                 file.write(f'{fp16_to_hex(signal_random[point + (BUTTERFLY_COUNT - 1 - col)].real)}{fp16_to_hex(signal_random[point + (BUTTERFLY_COUNT - 1 - col)].imag)}' )
-    #             file.write('\n')
-    # print(run_test_case("Random Complex Noise", signal_random, fft_hw, N))
+    if(options.fft_top_test):
+        with open('mem_init.txt', 'w') as file:
+            for point in range(0, N, BUTTERFLY_COUNT):
+                for col in range(BUTTERFLY_COUNT):
+                    # Want MSB first in mem init file
+                    file.write(f'{fp16_to_hex(signal_random[point + (BUTTERFLY_COUNT - 1 - col)].real)}{fp16_to_hex(signal_random[point + (BUTTERFLY_COUNT - 1 - col)].imag)}' )
+                file.write('\n')
+    print(run_test_case("Random Complex Noise", signal_random, fft_hw, N))
 
     # if(options.fft_top_test):
     #     # --- TEST 4: Linear function ---

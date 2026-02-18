@@ -41,25 +41,30 @@ module address_gen(
     integer i;
 
     always_ff @(posedge clk or negedge i_resetn) begin
-        if(!i_resetn || i_new_stage_trigger) begin
+        if(!i_resetn) begin
             address1          <= 0; 
             address2          <= address_offset; 
-        end else if(i_working && !i_fft_done)begin
-            address1          <= address1 + address_increment; 
-            address2          <= address1 + address_increment + address_offset;
-        end else begin
-            address1 <= address1;
-            address2 <= address2;
-        end
-
-        if((internal_new_group_trigger || i_new_stage_trigger || !i_resetn)) begin
             group_calc_counter <= 0;
-        end else if(i_working && !i_fft_done) begin
-            group_calc_counter <= group_calc_counter + 4;
         end else begin
-            group_calc_counter <= group_calc_counter;
-        end
+            if(i_new_stage_trigger) begin
+                address1          <= 0; 
+                address2          <= address_offset; 
+            end else if(i_working && !i_fft_done)begin
+                address1          <= address1 + address_increment; 
+                address2          <= address1 + address_increment + address_offset;
+            end else begin
+                address1 <= address1;
+                address2 <= address2;
+            end
 
+            if((internal_new_group_trigger || i_new_stage_trigger)) begin
+                group_calc_counter <= 0;
+            end else if(i_working && !i_fft_done) begin
+                group_calc_counter <= group_calc_counter + 4;
+            end else begin
+                group_calc_counter <= group_calc_counter;
+            end
+        end
     end
 
 endmodule

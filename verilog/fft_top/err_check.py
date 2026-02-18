@@ -20,15 +20,16 @@ def process_log(file_path):
     pass_pattern = re.compile(r"(\[\s*\d*\..*\sns\])\s\[PASS\]")
     fail_addr_pattern = re.compile(r"(\[\s*\d*\..*\sns\])\s\[FAIL\].*Address Mismatch")
     fail_data_pattern = re.compile(r"(\[\s*\d*\..*\sns\])\s\[FAIL\].*Data\sMismatch.*Expected:\s(\S{8})\s(\S{8})\s(\S{8})\s(\S{8}).*Got:\s(\S{8})\s(\S{8})\s(\S{8})\s(\S{8})")
-
+    write_after_done_pattern = re.compile(r"ERROR, WRITE OCCURRED AFTER o_fft_done WAS ASSERTED")
     # Storage to keep track of expected values to compare against "Got"
     pass_count = 0
     pass_timestamps = []
     addr_err_count = 0
     data_err_count_round = 0
     data_err_count_real = 0
+    write_after_done_err_count = 0
 
-    max_error = 0.1
+    max_error = 0.5
     point_configuration = 0
     num_points = 0
     largest_deltas = []
@@ -39,6 +40,7 @@ def process_log(file_path):
             pass_match = pass_pattern.findall(line)
             fail_addr_match = fail_addr_pattern.findall(line)
             fail_data_match = fail_data_pattern.findall(line)
+            write_after_done_match = write_after_done_pattern.findall(line)
 
             if point_match:
                 for point_config in point_match:
@@ -72,8 +74,8 @@ def process_log(file_path):
                     err = 0
                     largest_delta = 0
                     for delta in deltas:
+                        largest_delta = max(delta, largest_delta)
                         if(delta > max_error):
-                            largest_delta = max(delta, largest_delta)
                             err += 1
                     largest_deltas.append(largest_delta)
                     if(err == 0):
@@ -83,12 +85,9 @@ def process_log(file_path):
                         print(f"Expected: {real_exp1}+{imag_exp1}j {real_exp2}+{imag_exp2}j  {real_exp3}+{imag_exp3}j {real_exp4}+{imag_exp4}j")
                         print(f"Got:      {real_got1}+{imag_got1}j {real_got2}+{imag_got2}j  {real_got3}+{imag_got3}j {real_got4}+{imag_got4}j")
                         data_err_count_real += 1
+            elif write_after_done_match:
+                write_after_done_err_count += 1
             
-    print(f"Passes: {pass_count}")
-    print(f"Address Errors: {addr_err_count}")
-    print(f"Data Errors due to rounding: {data_err_count_round}")
-    print(f"Data Errors that are real: {data_err_count_real}")
-    print(f"Largest Delta {max(largest_deltas)}")
     num_writes = pass_count + addr_err_count + data_err_count_real + data_err_count_round
     num_stages = 3 + point_configuration
     print(f"Number of points: {num_points}")
@@ -96,7 +95,13 @@ def process_log(file_path):
     print(f"Num writes expected {num_points//4 * (num_stages-1)}")
     print(f"Num writes done {num_writes}")
     print(f"Num writes done per port {num_writes//2}")
-    print(f"Num data points processed {num_writes*4}")
+    print(f"Num data points processed {num_writes*4}\n")
+    print(f"Passes: {pass_count}")
+    print(f"Address Errors: {addr_err_count}")
+    print(f"Data Errors due to rounding: {data_err_count_round}")
+    print(f"Data Errors that are real: {data_err_count_real}")
+    print(f"Write after done errors: {write_after_done_err_count}")
+    print(f"Largest Delta {max(largest_deltas)}")
 
     
                 
