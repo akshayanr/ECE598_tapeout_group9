@@ -15,17 +15,28 @@ module group_scan_mem_reg_if(
     // To SRAM
     output reg sram_ren,
     output reg sram_wen,
-    output reg [8:0] sram_addr,
-    output reg [31:0] sram_wdata,
-    input [31:0] sram_rdata,
+    output reg [7:0] sram_addr,
+    output reg [127:0] sram_bweb,
+    //output reg [8:0] sram_addr,
+    //output reg [31:0] sram_wdata,
+    output reg [127:0] sram_wdata,
+    //input [31:0] sram_rdata,
+    input [127:0] sram_rdata,
     input sram_ready,
 
     // point configuration control reg
     output reg pnt_cfg_ren,
     output reg pnt_cfg_wen,
     output reg [2:0] pnt_cfg_wdata,
-    input [10:0] pnt_cfg_rdata,
+    input [2:0] pnt_cfg_rdata,
     input pnt_cfg_ready,
+
+     // cycle configuration control reg
+    output reg cycle_cfg_ren,
+    output reg cycle_cfg_wen,
+    output reg [10:0] cycle_cfg_wdata,
+    input [10:0] cycle_cfg_rdata,
+    input cycle_cfg_ready,
 
     // start fft control reg
     output reg start_fft_ren,
@@ -42,10 +53,10 @@ module group_scan_mem_reg_if(
     input reset_fft_ready,
 
     // done status reg
-    input fft_done,
+    input fft_done
 
     // which SRAM to read from
-    input select_sram_reg
+    //input select_sram_reg
 
 );
 
@@ -93,12 +104,19 @@ module group_scan_mem_reg_if(
         .sram_rdata(sram_rdata),// Connect sram_rdata from top level
         .sram_ready(sram_ready),
         .sram_addr(sram_addr),
+        .sram_bweb(sram_bweb),
 
         .pnt_cfg_ren(pnt_cfg_ren),
         .pnt_cfg_wen(pnt_cfg_wen),
         .pnt_cfg_wdata(pnt_cfg_wdata),
         .pnt_cfg_rdata(pnt_cfg_rdata),
         .pnt_cfg_ready(pnt_cfg_ready),
+
+        .cycle_cfg_ren(cycle_cfg_ren),
+        .cycle_cfg_wen(cycle_cfg_wen),
+        .cycle_cfg_wdata(cycle_cfg_wdata),
+        .cycle_cfg_rdata(cycle_cfg_rdata),
+        .cycle_cfg_ready(cycle_cfg_ready),
 
         .start_fft_ren(start_fft_ren),
         .start_fft_wen(start_fft_wen),
@@ -112,8 +130,9 @@ module group_scan_mem_reg_if(
         .reset_fft_rdata(reset_fft_rdata),
         .reset_fft_ready(reset_fft_ready),
 
-        .fft_done(fft_done),
-        .select_sram_reg(select_sram_reg)
+        .fft_done(fft_done)
+        //,
+        //.select_sram_reg(select_sram_reg)
     );
 
     syn_pulse_gen syn_pulse_gen_inst(

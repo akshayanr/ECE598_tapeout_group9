@@ -165,139 +165,221 @@ module test_scan(
    initial begin
       #(`RESET_CYCLE*`CLK_CYCLE);
       dummy = 1;
-      // write data to group A
-
+ 
       // write to reset fft reg (active low)
       write_stuff (20'b0000_0000_0100_1000_0000, 32'h0);
       #(10*`CLK_CYCLE);
 
-      // write to reset fft reg (active low)
+      //read reset fft reg
+      read_stuff (20'b0000_0000_0100_1000_0000);
+      #(10*`CLK_CYCLE);
+
+      //toggle reset fft off because we don't want reset.
       write_stuff (20'b0000_0000_0100_1000_0000, 32'h1);
       #(10*`CLK_CYCLE);
 
-      //point_configuration.
-      // set N = 8
-      write_stuff (20'b0000_0000_0110_0000_0000, 32'h1);
+      //read reset fft reg to check that it is toggled off.
+      read_stuff (20'b0000_0000_0100_1000_0000);
       #(10*`CLK_CYCLE);
 
-      // set N = 16
-      write_stuff (20'b0000_0000_0110_0000_0000, 32'h0);
+      //should read that point config is 0 or at 8-point config
+      read_stuff (20'b0000_0000_0110_0000_0000);
       #(10*`CLK_CYCLE);
-
-      // set N = 32
-      write_stuff (20'b0000_0000_0110_0000_0000, 32'h2);
-      #(10*`CLK_CYCLE);
-
-      // set N = 64
-      write_stuff (20'b0000_0000_0110_0000_0000, 32'h3);
-      #(10*`CLK_CYCLE);
-
-      // set N = 128
-      write_stuff (20'b0000_0000_0110_0000_0000, 32'h4);
-      #(10*`CLK_CYCLE);
-
-      // set N = 256
-      write_stuff (20'b0000_0000_0110_0000_0000, 32'h5);
-      #(10*`CLK_CYCLE);
-
-      // set N = 512
-      write_stuff (20'b0000_0000_0110_0000_0000, 32'h6);
-      #(10*`CLK_CYCLE);
-
-      // set N = 1024
+      
+      // set to 7 or 1024-point config
       write_stuff (20'b0000_0000_0110_0000_0000, 32'h7);
       #(10*`CLK_CYCLE);
 
-     // write to start fft reg
-      write_stuff (20'b0000_0000_0101_0000_0000, 32'h1);
+
+      // check that 1024-point config is set
+      read_stuff (20'b0000_0000_0110_0000_0000);
       #(10*`CLK_CYCLE);
 
-      // write data to sram
+      
+      //start writing to sram index 0
       write_stuff (20'h00000, 32'h87654321);
       #(10*`CLK_CYCLE);
 
-      write_stuff (20'h00002, 32'h13579876);
-      #(10*`CLK_CYCLE)
-
-      write_stuff (20'b0000_0000_0001_1111_1111, 32'h24687654);
-      #(10*`CLK_CYCLE);
-
-      // read_stuff (20'h0);
-      // #(10*`CLK_CYCLE);
-
-      // read_stuff (20'h2);
-      // #(10*`CLK_CYCLE);
-
-      // read_stuff (20'b0000_0000_0001_1111_1111);
-      // #(10*`CLK_CYCLE);
-
-      // // reset regs + sram
-      // // write to reset fft reg
-      // write_stuff (20'b0000_0000_0100_1000_0000, 32'h0);
-      // #(10*`CLK_CYCLE);
-
-      // // write to reset fft reg
-      // write_stuff (20'b0000_0000_0100_1000_0000, 32'h1);
-      // #(10*`CLK_CYCLE);
-
-
-
-      // read data from group A
-      // read data from sram
-      // read_stuff (20'h00001);
-      // #(10*`CLK_CYCLE)
-      
-      // read data from pnt cfg reg
-      // read N = 8
-      read_stuff (20'b0000_0000_0110_0000_0000);
-      #(10*`CLK_CYCLE);
-
-      // read N = 16
-      read_stuff (20'b0000_0000_0110_0000_0000);
-      #(10*`CLK_CYCLE);
-
-      // read N = 32
-      read_stuff (20'b0000_0000_0110_0000_0000);
-      #(10*`CLK_CYCLE);
-
-      // read N = 64
-      read_stuff (20'b0000_0000_0110_0000_0000);
-      #(10*`CLK_CYCLE);
-
-      // read N = 128
-      read_stuff (20'b0000_0000_0110_0000_0000);
-      #(10*`CLK_CYCLE);
-
-      // read N = 256
-      read_stuff (20'b0000_0000_0110_0000_0000);
-      #(10*`CLK_CYCLE);
-
-      // read N = 512
-      read_stuff (20'b0000_0000_0110_0000_0000);
-      #(10*`CLK_CYCLE);
-
-      // read N = 1024
-      read_stuff (20'b0000_0000_0110_0000_0000);
-      #(10*`CLK_CYCLE);
-
-      // read start fft reg
-      read_stuff (20'b0000_0000_0101_0000_0000);
-      #(10*`CLK_CYCLE);
-
-      // read reset fft reg
-      read_stuff (20'b0000_0000_0100_1000_0000);
-      #(10*`CLK_CYCLE);
-      read_stuff (20'b0000_0000_0100_1000_0000);
-      #(10*`CLK_CYCLE);
-
+      //check that you've written to sram index 0
       read_stuff (20'h0);
       #(10*`CLK_CYCLE);
 
+      //to check that the bit masking works - we're writing to other addresses that belong
+      //to the same word line in the sram, such as 1, 2, and 3.
+      write_stuff (20'h00001, 32'h87654322);
+      #(10*`CLK_CYCLE);
+
+      //check that you've written to sram index 1
+      read_stuff (20'h1);
+      #(10*`CLK_CYCLE);
+
+      //write to sram index 2
+      write_stuff (20'h00002, 32'h87654323);
+      #(10*`CLK_CYCLE);
+
+      //check that you've written to sram index 2
       read_stuff (20'h2);
       #(10*`CLK_CYCLE);
 
-      read_stuff (20'b0000_0000_0001_1111_1111);
+      //write to sram index 3
+      write_stuff (20'h00003, 32'h87654324);
       #(10*`CLK_CYCLE);
+
+      //check that you've written to sram index 3
+      read_stuff (20'h3);
+      #(10*`CLK_CYCLE);
+
+      //write to sram index 8
+      write_stuff(20'd8,    32'hA5A5_B2B2);
+      #(10*`CLK_CYCLE);
+
+      //check that you've written to sram index 8
+      read_stuff (20'd8);
+      #(10*`CLK_CYCLE);
+
+      //write to sram index 16
+      write_stuff(20'd16,   32'h4920_4D53);
+      #(10*`CLK_CYCLE);
+
+      //check that you've written to sram index 16
+      read_stuff (20'd16);
+      #(10*`CLK_CYCLE);
+
+      //write to sram index 32
+      write_stuff(20'd32,   32'h7261_6E64);
+      #(10*`CLK_CYCLE);
+
+      //check that you've written to sram index 32
+      read_stuff (20'd32);
+      #(10*`CLK_CYCLE);
+
+      //write to sram index 64
+      write_stuff(20'd64,   32'h8C0F_EED1);
+      #(10*`CLK_CYCLE);
+
+      //check that you've written to sram index 64
+      read_stuff (20'd64);
+      #(10*`CLK_CYCLE);
+
+      //write to sram index 128ß
+      write_stuff(20'd128,  32'h55AA_CC33);
+      #(10*`CLK_CYCLE);
+
+      //check that you've written to sram index 128
+      read_stuff (20'd128);
+      #(10*`CLK_CYCLE);
+
+      //write to sram index 256
+      write_stuff(20'd256,  32'hDEAD_BEEF);
+      #(10*`CLK_CYCLE);
+
+      //check that you've written to sram index 256
+      read_stuff (20'd256);
+      #(10*`CLK_CYCLE);
+
+      //write to sram index 512
+      write_stuff(20'd512,  32'h600D_F00D);
+      #(10*`CLK_CYCLE);
+
+      //check that you've written to sram index 512.
+      read_stuff (20'd512);
+      #(10*`CLK_CYCLE);
+
+      //write to sram index 1023 - the last index
+      write_stuff(20'd1023, 32'h3FFF_FFFF);
+      #(10*`CLK_CYCLE);
+
+      //check that you've written to sram index 1023 - should showcase masking
+      read_stuff (20'd1023);
+      #(10*`CLK_CYCLE);
+
+      // write to start fft reg
+      write_stuff (20'b0000_0000_0101_0000_0000, 32'h1);
+      #(10*`CLK_CYCLE);
+
+      // read to check start fft reg
+      read_stuff (20'b0000_0000_0101_0000_0000);
+      #(10*`CLK_CYCLE);
+
+      //now check done done register -> should not be done yet.ß
+      read_stuff(20'b0000_0000_0100_0100_0000);
+       #(250*`CLK_CYCLE);
+
+      //check done register again - should be done at this point.ßß
+      read_stuff(20'b0000_0000_0100_0100_0000);
+      #(10*`CLK_CYCLE);
+
+      //now read from sram -> should be reading in values that you entered into SRAM A because
+      //fft is not attached yet, but testing the sram ping pong logic. Should read from SRAM A for 1024-point fft.
+      read_stuff (20'd32);
+      #(10*`CLK_CYCLE);
+
+      read_stuff (20'd64);
+      #(10*`CLK_CYCLE);
+
+
+      read_stuff (20'd1023);
+      #(10*`CLK_CYCLE);
+
+      //reset fft for next set of points.
+      write_stuff (20'b0000_0000_0100_1000_0000, 32'h0);
+      #(10*`CLK_CYCLE);
+
+      //check that reset fft is set
+      read_stuff (20'b0000_0000_0100_1000_0000);
+      #(10*`CLK_CYCLE);
+
+      //toggle reset fft off because we don't want reset to stay on all the time.
+      write_stuff (20'b0000_0000_0100_1000_0000, 32'h1);
+      #(10*`CLK_CYCLE);
+
+      //read reset fft reg to check that it is off
+      read_stuff (20'b0000_0000_0100_1000_0000);
+      #(10*`CLK_CYCLE);
+
+      //even though reset was set; the set point configuration doesnt change.  
+      read_stuff (20'b0000_0000_0110_0000_0000);
+      #(10*`CLK_CYCLE);
+
+      //configure the point configuration to be 32-point
+      write_stuff (20'b0000_0000_0110_0000_0000, 32'h2);
+      #(10*`CLK_CYCLE);
+
+      //write to start fft reg
+      write_stuff (20'b0000_0000_0101_0000_0000, 32'h1);
+      #(10*`CLK_CYCLE);
+
+      //check that start fft is written
+      read_stuff (20'b0000_0000_0101_0000_0000);
+      #(10* `CLK_CYCLE);
+
+      //check that fft is done - should be done at this point.
+      read_stuff(20'b0000_0000_0100_0100_0000);
+      #(250*`CLK_CYCLE);
+
+      
+      //now should be done; check that it is done.
+      read_stuff(20'b0000_0000_0100_0100_0000);
+       #(10*`CLK_CYCLE);
+
+      //At 32-point configuration, the values should be read from sram B. 
+      //but because nothing was ever written to SRAM B cause fft is not hooked up, it should be x's.
+      read_stuff (20'd32);
+      #(10*`CLK_CYCLE);
+
+      read_stuff (20'd64);
+      #(10*`CLK_CYCLE);
+
+      read_stuff (20'd1023);
+      #(10*`CLK_CYCLE);
+
+      //the cycle configuration register should be set right after/before the point configuration register.
+      //but this feature was added later, so testing at the end.
+      write_stuff (20'b0000_0000_0100_0010_0000, 32'd10);
+      #(10*`CLK_CYCLE);
+
+      //read cycle_cfg register should be 10.
+      read_stuff (20'b0000_0000_0100_0010_0000);
    end
  
 endmodule // tbench	

@@ -15,9 +15,13 @@ module scan_for_test(
     // Group 1
     output reg sram_ren_A,
     output reg sram_wen_A,
-    output reg [8:0] sram_addr_A,
-    output reg [31:0] sram_wdata_A,
-    input [31:0] sram_rdata_A,
+    //output reg [8:0] sram_addr_A,
+    output reg [7:0] sram_addr_A,
+    output reg [127:0] sram_bweb_A,
+    //output reg [31:0] sram_wdata_A,
+    output reg [127:0] sram_wdata_A,
+    //input [31:0] sram_rdata_A,
+    input [127:0] sram_rdata_A,
     input sram_ready_A,
 
 
@@ -25,8 +29,15 @@ module scan_for_test(
     output reg pnt_cfg_ren,
     output reg pnt_cfg_wen,
     output reg [2:0] pnt_cfg_wdata,
-    input [10:0] pnt_cfg_rdata,
+    input [2:0] pnt_cfg_rdata,
     input pnt_cfg_ready,
+
+    // cycle configuration control reg
+    output reg cycle_cfg_ren,
+    output reg cycle_cfg_wen,
+    output reg [10:0] cycle_cfg_wdata,
+    input [10:0] cycle_cfg_rdata,
+    input cycle_cfg_ready,
 
     // start fft control reg
     output reg start_fft_ren,
@@ -122,6 +133,7 @@ module scan_for_test(
         .sram_ren   (sram_ren_A),
         .sram_wen   (sram_wen_A),
         .sram_addr  (sram_addr_A),
+        .sram_bweb  (sram_bweb_A),
         .sram_wdata (sram_wdata_A),
         .sram_rdata (sram_rdata_A),
         .sram_ready (sram_ready_A),
@@ -132,6 +144,13 @@ module scan_for_test(
         .pnt_cfg_wdata(pnt_cfg_wdata),
         .pnt_cfg_rdata(pnt_cfg_rdata),
         .pnt_cfg_ready(pnt_cfg_ready),
+
+        //cycle configuration control reg.
+        .cycle_cfg_ren(cycle_cfg_ren),
+        .cycle_cfg_wen(cycle_cfg_wen),
+        .cycle_cfg_wdata(cycle_cfg_wdata),
+        .cycle_cfg_rdata(cycle_cfg_rdata),
+        .cycle_cfg_ready(cycle_cfg_ready),
 
         // start fft control reg
         .start_fft_ren(start_fft_ren),
@@ -148,10 +167,10 @@ module scan_for_test(
         .reset_fft_ready(reset_fft_ready),
 
         // done status reg
-        .fft_done(fft_done),
+        .fft_done(fft_done)
 
         // which SRAM to read from
-        .select_sram_reg(select_sram_reg)
+        //.select_sram_reg(select_sram_reg)
     );
 
 endmodule 
