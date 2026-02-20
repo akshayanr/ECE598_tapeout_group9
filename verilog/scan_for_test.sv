@@ -54,10 +54,10 @@ module scan_for_test(
     input reset_fft_ready,
 
     // done status reg
-    input fft_done,
+    input fft_done
 
     // which SRAM to read from
-    input select_sram_reg
+    //input select_sram_reg
     
 );
     // block_scan
