@@ -71,20 +71,20 @@ module mem_reg_mux (
     end
 
     always @* begin
-        sram_wen   = !scan_addr[10] ? scan_wen : 0;
-        sram_ren   = !scan_addr[10] ? scan_ren : 0;
+        sram_wen   = (!scan_addr[10]) ? scan_wen : 0;
+        sram_ren   = (!scan_addr[10]) ? scan_ren : 0;
 
-	    pnt_cfg_wen = scan_addr[10] && scan_addr[9] ? scan_wen : 0;
-	    pnt_cfg_ren = scan_addr[10] && scan_addr[9] ? scan_ren : 0;
+	    pnt_cfg_wen = (scan_addr[10] && scan_addr[9]) ? scan_wen : 0;
+	    pnt_cfg_ren = (scan_addr[10] && scan_addr[9]) ? scan_ren : 0;
 
-        cycle_cfg_wen = scan_addr[10] && scan_addr[5] ? scan_wen : 0;
-	    cycle_cfg_ren = scan_addr[10] && scan_addr[5] ? scan_ren : 0;
+        cycle_cfg_wen = (scan_addr[10] && scan_addr[5]) ? scan_wen : 0;
+	    cycle_cfg_ren = (scan_addr[10] && scan_addr[5]) ? scan_ren : 0;
 
-        start_fft_wen = scan_addr[10] && scan_addr[8] ? scan_wen : 0;
-        start_fft_ren = scan_addr[10] && scan_addr[8] ? scan_ren : 0;
+        start_fft_wen = (scan_addr[10] && scan_addr[8]) ? scan_wen : 0;
+        start_fft_ren = (scan_addr[10] && scan_addr[8]) ? scan_ren : 0;
 
-        reset_fft_wen = scan_addr[10] && scan_addr[7] ? scan_wen : 0;
-        reset_fft_ren = scan_addr[10] && scan_addr[7] ? scan_ren : 0;
+        reset_fft_wen = (scan_addr[10] && scan_addr[7]) ? scan_wen : 0;
+        reset_fft_ren = (scan_addr[10] && scan_addr[7]) ? scan_ren : 0;
 
         //still need to be able to read status registers like done to figure out that it is done.
         //so this is the address that will help us check that.
@@ -96,7 +96,7 @@ module mem_reg_mux (
         //sram_addr     = !scan_addr[10] ? scan_addr[8:0]   : 0;
 
         //translates to sram index
-        sram_addr = !scan_addr[10] ? scan_addr[9:2] : 0;
+        sram_addr = (!scan_addr[10]) ? scan_addr[9:2] : 0;
 
         cycle_cfg_wdata = scan_addr[10] ? scan_wdata[10:0] : 0;
 
@@ -130,7 +130,7 @@ module mem_reg_mux (
             default: begin
                 sram_rdata_trunc = sram_rdata[127:96]; 
                 sram_wdata = {scan_wdata, 96'd0}; 
-                sram_bweb = {32'hffffffff, 32'hffffffff, 32'hffffffff, 32'hffffffff};
+                sram_bweb = 128'h0;
             end
         endcase
 

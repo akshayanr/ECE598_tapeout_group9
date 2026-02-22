@@ -1,7 +1,7 @@
 `timescale 1ns/1ps
 
 // thanks gemini
-module tb_fft_top();
+module fft_top_tb();
 
     // -------------------------------------------------------------------------
     // 1. Signals & Configuration
@@ -36,6 +36,12 @@ module tb_fft_top();
     integer f_out_check;
     integer status;
     
+    /////////////////////////////////////////
+    // SDF annotation
+    `ifdef SYN
+        initial $sdf_annotate("../../syn/fft_top/fft_top.syn.sdf", fft_top_tb.dut);
+    `endif
+
     // -------------------------------------------------------------------------
     // 2. DUT Instantiation
     // -------------------------------------------------------------------------

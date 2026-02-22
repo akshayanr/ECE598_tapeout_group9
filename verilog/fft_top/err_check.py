@@ -92,8 +92,11 @@ def process_log(file_path):
     num_stages = 3 + point_configuration
     print(f"Number of points: {num_points}")
     print(f"Number of stages: {num_stages}")
-    print(f"Num writes expected {num_points//4 * (num_stages-1)}")
+    num_writes_expected = (num_points//4) * num_stages
+    print(f"Num writes expected {num_writes_expected}")
     print(f"Num writes done {num_writes}")
+    if(num_writes_expected != num_writes):
+        print("ERROR: NUMBER OF WRITES IS INCORRECT")
     print(f"Num writes done per port {num_writes//2}")
     print(f"Num data points processed {num_writes*4}\n")
     print(f"Passes: {pass_count}")

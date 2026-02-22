@@ -272,9 +272,9 @@ class Reconfigurable_FFT:
                     if(self.options.datapath_test):
                         input_file.write(f'{stride} ')
                         for butterfly in range(self.butterfly_count):
-                            input_file.write(f'{fp16_to_hex(first_row[butterfly].real)} {fp16_to_hex(first_row[butterfly].imag)} ')
+                            input_file.write(f'{fp16_to_hex(first_row[butterfly].real)}{fp16_to_hex(first_row[butterfly].imag)} ')
                         for butterfly in range(self.butterfly_count):
-                            input_file.write(f'{fp16_to_hex(second_row[butterfly].real)} {fp16_to_hex(second_row[butterfly].imag)} ')
+                            input_file.write(f'{fp16_to_hex(second_row[butterfly].real)}{fp16_to_hex(second_row[butterfly].imag)} ')
 
 
                     #create a data_pool of both rows
@@ -400,7 +400,7 @@ def bit_reverse_reorder(data, n):
     return reordered
 
 #function to run test_case
-def run_test_case(test_name, input_signal, fft_hw, N):
+def run_test_case(test_name, input_signal, fft_hw, N, options):
     print(f"\n[TEST] Running: {test_name}")
     
     #load data
@@ -436,6 +436,19 @@ def run_test_case(test_name, input_signal, fft_hw, N):
     max_error = np.max(np.abs(np.array(hw_output_ordered) - np_result))
     print(f"   Status: {'PASS' if is_match else 'FAIL'}")
     print(f"   Max Error: {max_error:.6f}")
+
+    if(options.top_test):
+        with open('golden.in.txt', 'w') as file:
+            for point in input_signal:
+                file.write(f'{fp16_to_hex(point.real)}{fp16_to_hex(point.imag)}\n')
+        with open('golden.raw.txt', 'w') as file:
+            for point in hw_output_raw:
+                file.write(f'{fp16_to_hex(point.real)}{fp16_to_hex(point.imag)}\n')
+        with open('golden.out.txt', 'w') as file:
+            for point in np_result:
+                file.write(f'{fp16_to_hex(point.real)}{fp16_to_hex(point.imag)}\n')
+
+
     
     return is_match
 
@@ -480,7 +493,7 @@ def main(options):
                     # Want MSB first in mem init file
                     file.write(f'{fp16_to_hex(signal_random[point + (BUTTERFLY_COUNT - 1 - col)].real)}{fp16_to_hex(signal_random[point + (BUTTERFLY_COUNT - 1 - col)].imag)}' )
                 file.write('\n')
-    print(run_test_case("Random Complex Noise", signal_random, fft_hw, N))
+    print(run_test_case("Random Complex Noise", signal_random, fft_hw, N, options))
 
     # if(options.fft_top_test):
     #     # --- TEST 4: Linear function ---
@@ -508,6 +521,7 @@ if __name__ == "__main__":
     parser.add_argument('-nb', '--num_butterflys', type=int, default=4)
     parser.add_argument('-datapath_test', '--datapath_test', action='store_true')
     parser.add_argument('-fft_top_test', '--fft_top_test', action='store_true')
+    parser.add_argument('-top_test', '--top_test', action='store_true')
 
 
     options = parser.parse_args()
