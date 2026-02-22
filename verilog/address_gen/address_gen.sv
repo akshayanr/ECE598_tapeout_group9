@@ -15,6 +15,7 @@ module address_gen(
 
 ); 
     logic new_group_trigger; 
+    logic internal_new_group_trigger; 
 
     logic [9:0] group_calc_counter; 
 

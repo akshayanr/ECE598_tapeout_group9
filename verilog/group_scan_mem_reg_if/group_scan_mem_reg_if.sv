@@ -92,6 +92,7 @@ module group_scan_mem_reg_if(
 
    // instiate mem_reg_mux
    mem_reg_mux mem_reg_mux_inst (
+        .clk(clk),
         .scan_ren(scan_ren),    // Connect scan_ren from top level
         .scan_wen(scan_wen),    // Connect scan_wen from top level
         .scan_addr(scan_addr),  // Connect scan_addr from top level
